@@ -8,7 +8,7 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
-    <a-scene physics="debug: false; gravity: -9.8">
+    <a-scene physics="debug: false; gravity: -9.8; driver: local">
       
       <a-sky color="#87CEEB"></a-sky>
 
@@ -28,7 +28,7 @@
 
       <a-entity id="camera-rig" 
                 movement-controls="controls: keyboard; speed: 0.3" 
-                kinematic-body="radius: 0.4" 
+                kinematic-body="radius: 0.4; height: 1.5" 
                 position="0 0.1 0">
         
         <a-camera id="local-player" 
