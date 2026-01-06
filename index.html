@@ -1,15 +1,25 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>GrayGarden Multiplayer</title>
-    <style>
-        body { margin: 0; height: 100vh; background: #eee; overflow: hidden; }
-    </style>
-</head>
-<body>
+  <head>
+    <title>GrayGarden 3D</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="script.js"></script>
-    <h1>Test GrayGarden: Se vedi questo, l'HTML funziona!</h1>
-</body>
-</html>
+  </head>
+  <body>
+    <a-scene>
+      <a-sky color="#87CEEB"></a-sky>
 
+      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
+
+      <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+
+      <a-entity id="camera-rig">
+        <a-camera id="local-player" look-controls wasd-controls position="0 1.6 0">
+          <a-cursor></a-cursor> 
+        </a-camera>
+      </a-entity>
+    </a-scene>
+
+    <script src="script.js"></script>
+  </body>
+</html>
