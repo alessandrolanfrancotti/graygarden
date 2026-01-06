@@ -1,38 +1,29 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GrayGarden 3D</title>
+    <title>GrayGarden 3D - Physics</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
-    <a-scene>
+    <a-scene physics="debug: false; gravity: -9.8">
+      
       <a-sky color="#87CEEB"></a-sky>
 
-      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
+      <a-plane static-body position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
 
-      <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+      <a-box static-body position="-1 0.5 -5" color="#4CC3D9"></a-box>
 
-      <a-entity id="camera-rig">
-        <a-camera id="local-player" look-controls wasd-controls position="0 1.6 0">
-          <a-cursor></a-cursor> 
-          <a-entity id="camera-rig">
-          <a-camera id="local-player" look-controls wasd-controls position="0 1.6 0">
-    
-            <a-box id="my-body" 
-           width="0.5" height="1.5" depth="0.5" 
-           color="#4CC3D9" 
-           position="0 -0.5 0">
-    </a-box>
-
-    <a-cursor></a-cursor> 
-  </a-camera>
-</a-entity>
+      <a-entity id="camera-rig" position="0 0.1 0">
+        <a-camera id="local-player" look-controls wasd-controls>
+            <a-box width="0.5" height="1.5" depth="0.5" color="#4CC3D9" position="0 -0.5 0"></a-box>
+            <a-cursor></a-cursor>
         </a-camera>
       </a-entity>
+
     </a-scene>
 
     <script src="script.js"></script>
   </body>
 </html>
-
