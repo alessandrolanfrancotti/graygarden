@@ -1,53 +1,88 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>GrayGarden 3D - Solid World</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+const socket = io("https://graygarden.onrender.com");
+const scene = document.querySelector('a-scene');
+const rig = document.getElementById('camera-rig');
+const localCamera = document.getElementById('local-player');
+const otherPlayers = {};
 
-    <style>
-      body { margin: 0; overflow: hidden; background-color: #000; }
-      /* CSS per un eventuale menu o interfaccia futura */
-      #instructions {
-        position: absolute; top: 10px; left: 10px;
-        color: white; font-family: sans-serif;
-        background: rgba(0,0,0,0.5); padding: 10px;
-        pointer-events: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="instructions">WASD per muoverti | SPAZIO per saltare | Click per bloccare il mouse</div>
+// BLOCCO MOUSE
+scene.addEventListener('click', () => {
+    scene.canvas.requestPointerLock();
+});
 
-    <a-scene renderer="antialias: true" shadow="type: pcfsoft">
-      <a-sky color="#87CEEB"></a-sky>
+// LOGICA SALTO
+let isJumping = false;
+let verticalVelocity = 0;
+const gravity = -0.012;
+const jumpStrength = 0.2;
 
-      <a-entity light="type: ambient; intensity: 0.6"></a-entity>
-      <a-entity light="type: directional; intensity: 0.8; castShadow: true" position="-1 10 1"></a-entity>
+window.addEventListener('keydown', (e) => {
+    // Permette il salto solo se il rig è vicino al suolo
+    if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.15) {
+        isJumping = true;
+        verticalVelocity = jumpStrength;
+    }
+});
 
-      <a-plane class="nav-mesh-candidate"
-               rotation="-90 0 0" width="100" height="100" 
-               color="#7BC8A4" static-body></a-plane>
+// LOOP PRINCIPALE (50 FPS)
+setInterval(() => {
+    // 1. Gestione Salto e Gravità (Solo Y)
+    if (isJumping || rig.object3D.position.y > 0.1) {
+        verticalVelocity += gravity;
+        rig.object3D.position.y += verticalVelocity;
 
-      <a-box class="collidable" static-body position="0 1.5 -10" width="10" height="3" depth="1" color="#9E9E9E"></a-box>
-      <a-box class="collidable" static-body position="5 1 -5" width="2" height="2" depth="2" color="#FF9800"></a-box>
-      <a-box class="collidable" static-body position="-5 0.5 -3" width="2" height="1" depth="2" color="#FFC107"></a-box>
+        if (rig.object3D.position.y <= 0.1) {
+            rig.object3D.position.y = 0.1;
+            isJumping = false;
+            verticalVelocity = 0;
+        }
+    }
 
-      <a-entity id="camera-rig" 
-                movement-controls="controls: keyboard; speed: 0.2" 
-                kinematic-body="radius: 0.4; height: 1.6"
-                position="0 0.1 0">
-        <a-camera id="local-player" look-controls="pointerLockEnabled: true">
-          <a-entity cursor="fuse: false" 
-                    position="0 0 -1" 
-                    geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" 
-                    material="color: red; shader: flat">
-          </a-entity>
-        </a-camera>
-      </a-entity>
-    </a-scene>
+    // 2. Invio Posizione al Server
+    if (socket && socket.connected) {
+        const pos = rig.object3D.position;
+        const rot = localCamera.getAttribute('rotation');
+        socket.emit('move', {
+            x: pos.x, y: pos.y, z: pos.z,
+            ry: rot.y // Invia solo la rotazione Y per il corpo degli altri
+        });
+    }
+}, 20);
 
-    <script src="script.js"></script>
-  </body>
-</html>
+// MULTIPLAYER: Gestione degli altri giocatori
+socket.on('player-moved', (data) => {
+    if (!otherPlayers[data.id]) {
+        // Crea un avatar ispirato al link (semplice ed efficace)
+        const avatar = document.createElement('a-entity');
+        
+        // Corpo dell'avatar
+        const body = document.createElement('a-box');
+        body.setAttribute('width', '0.5');
+        body.setAttribute('height', '1.6');
+        body.setAttribute('depth', '0.5');
+        body.setAttribute('color', '#FF5733');
+        avatar.appendChild(body);
+
+        // Direzione sguardo (naso)
+        const nose = document.createElement('a-box');
+        nose.setAttribute('width', '0.2');
+        nose.setAttribute('height', '0.2');
+        nose.setAttribute('depth', '0.4');
+        nose.setAttribute('position', '0 0.5 -0.3');
+        nose.setAttribute('color', '#222');
+        avatar.appendChild(nose);
+
+        scene.appendChild(avatar);
+        otherPlayers[data.id] = avatar;
+    }
+
+    const p = otherPlayers[data.id];
+    p.object3D.position.set(data.x, data.y, data.z);
+    p.object3D.rotation.y = THREE.MathUtils.degToRad(data.ry);
+});
+
+socket.on('player-disconnected', (id) => {
+    if (otherPlayers[id]) {
+        scene.removeChild(otherPlayers[id]);
+        delete otherPlayers[id];
+    }
+});
