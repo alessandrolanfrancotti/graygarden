@@ -27,21 +27,54 @@ window.addEventListener('keydown', (e) => {
 
 // Loop principale a 50fps (20ms)
 setInterval(() => {
-    // 1. Gestione Altezza (Salto e Gravità)
-    if (isJumping || rig.object3D.position.y > 0.1) {
-        verticalVelocity += gravity;
-        
-        // Applichiamo il movimento verticale direttamente all'object3D
-        rig.object3D.position.y += verticalVelocity;
+    let pos = rig.object3D.position;
 
-        // Controllo atterraggio (0.1 è l'altezza base del rig)
-        if (rig.object3D.position.y <= 0.1) {
-            rig.object3D.position.y = 0.1;
+    // --- 1. GESTIONE SALTO (Invariata) ---
+    if (isJumping || pos.y > 0.1) {
+        verticalVelocity += gravity;
+        pos.y += verticalVelocity;
+        if (pos.y <= 0.1) {
+            pos.y = 0.1;
             isJumping = false;
             verticalVelocity = 0;
         }
     }
 
+    // --- 2. NUOVA LOGICA COLLISIONI ---
+    const walls = document.querySelectorAll('.collidable');
+    walls.forEach(wall => {
+        const wallPos = wall.object3D.position;
+        const wallWidth = wall.getAttribute('width') || 1;
+        const wallDepth = wall.getAttribute('depth') || 1;
+
+        // Calcoliamo se il giocatore è dentro i confini del blocco (con un piccolo margine di 0.5)
+        const hitX = Math.abs(pos.x - wallPos.x) < (wallWidth / 2 + 0.4);
+        const hitZ = Math.abs(pos.z - wallPos.z) < (wallDepth / 2 + 0.4);
+        const hitY = pos.y < (wallPos.y + wall.getAttribute('height') / 2);
+
+        if (hitX && hitZ && hitY) {
+            // Se sbatti, ti riportiamo alla posizione precedente o ti respingiamo
+            // Questo è un modo brutale ma impedisce di entrare nel blocco
+            const dirX = pos.x - wallPos.x;
+            const dirZ = pos.z - wallPos.z;
+            
+            if (Math.abs(dirX) > Math.abs(dirZ)) {
+                pos.x += dirX > 0 ? 0.05 : -0.05;
+            } else {
+                pos.z += dirZ > 0 ? 0.05 : -0.05;
+            }
+        }
+    });
+
+    // --- 3. INVIO DATI ---
+    if (socket.connected) {
+        const camRot = localCamera.getAttribute('rotation');
+        socket.emit('move', {
+            x: pos.x, y: pos.y, z: pos.z,
+            rx: camRot.x, ry: camRot.y, rz: camRot.z
+        });
+    }
+}, 20);
     // 2. Invio Dati al Server
     if (socket.connected) {
         // Usiamo le coordinate di object3D che sono quelle "reali" processate dalla fisica
