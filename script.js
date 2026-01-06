@@ -4,6 +4,12 @@ const rig = document.getElementById('camera-rig');
 const localCamera = document.getElementById('local-player');
 const otherPlayers = {};
 
+// --- BLOCCO DEL MOUSE (Pointer Lock) ---
+// Quando clicchi sulla scena, il mouse sparisce e controlli la visuale come in un FPS
+scene.addEventListener('click', () => {
+    scene.canvas.requestPointerLock();
+});
+
 // --- LOGICA DI SALTO ---
 let isJumping = false;
 let verticalVelocity = 0;
@@ -33,18 +39,20 @@ setInterval(() => {
         rig.setAttribute('position', { x: pos.x, y: newY, z: pos.z });
     }
 
-    // 2. Invio posizione al server (inclusa l'altezza del salto)
+    // 2. Invio posizione e ROTAZIONE al server
     if (socket.connected) {
         const rigPos = rig.getAttribute('position');
+        // Importante: prendiamo la rotazione della testa (camera)
         const camRot = localCamera.getAttribute('rotation');
+        
         socket.emit('move', {
             x: rigPos.x, y: rigPos.y, z: rigPos.z,
             rx: camRot.x, ry: camRot.y, rz: camRot.z
         });
     }
-}, 20); // Più veloce (20ms) per un salto fluido
+}, 20);
 
-// --- LOGICA MULTIPLAYER (Invariata) ---
+// --- LOGICA MULTIPLAYER ---
 socket.on('current-players', (players) => {
     Object.keys(players).forEach((id) => {
         if (id !== socket.id) createPlayerAvatar(id, players[id]);
@@ -56,7 +64,9 @@ socket.on('player-moved', (data) => {
         createPlayerAvatar(data.id, data);
     } else {
         const avatar = otherPlayers[data.id];
+        // Aggiorna posizione
         avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
+        // Aggiorna rotazione (così vedi dove guardano gli altri!)
         avatar.setAttribute('rotation', { x: data.rx, y: data.ry, z: data.rz });
     }
 });
@@ -76,6 +86,16 @@ function createPlayerAvatar(id, data) {
     avatar.setAttribute('width', '0.5');
     avatar.setAttribute('height', '1.5');
     avatar.setAttribute('depth', '0.5');
+    
+    // Aggiungiamo un piccolo "naso" o mirino al cubo per capire dove guarda
+    const nose = document.createElement('a-box');
+    nose.setAttribute('position', '0 0.5 -0.3');
+    nose.setAttribute('width', '0.2');
+    nose.setAttribute('height', '0.2');
+    nose.setAttribute('depth', '0.4');
+    nose.setAttribute('color', 'black');
+    avatar.appendChild(nose);
+
     scene.appendChild(avatar);
     otherPlayers[id] = avatar;
 }
