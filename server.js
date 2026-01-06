@@ -1,20 +1,28 @@
-const socket = io("https://graygarden.onrender.com");
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
 
-// Quando clicco, dico al server dove mi trovo
-window.addEventListener("click", (event) => {
-    const posizione = { x: event.clientX, y: event.clientY };
-    socket.emit("click-del-giocatore", posizione);
+const app = express();
+app.use(cors());
+
+// Pagina di benvenuto per confermare che il server è vivo
+app.get('/', (req, res) => {
+  res.send('Server di GrayGarden attivo!');
 });
 
-// Quando il server mi dice che qualcuno ha cliccato, disegno
-socket.on("disegna-cerchio", (data) => {
-    const cerchio = document.createElement("div");
-    cerchio.style.position = "absolute";
-    cerchio.style.left = data.x + "px";
-    cerchio.style.top = data.y + "px";
-    cerchio.style.width = "20px";
-    cerchio.style.height = "20px";
-    cerchio.style.backgroundColor = data.id === socket.id ? "blue" : "red"; // Blu io, rosso gli altri
-    cerchio.style.borderRadius = "50%";
-    document.body.appendChild(cerchio);
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Permette la connessione da GitHub Pages
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Un giocatore si è connesso! ID:', socket.id);
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server in ascolto sulla porta ${PORT}`);
 });
