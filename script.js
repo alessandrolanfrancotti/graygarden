@@ -5,9 +5,10 @@ const localCamera = document.getElementById('local-player');
 const otherPlayers = {};
 
 // --- BLOCCO DEL MOUSE (Pointer Lock) ---
-// Quando clicchi sulla scena, il mouse sparisce e controlli la visuale come in un FPS
 scene.addEventListener('click', () => {
-    scene.canvas.requestPointerLock();
+    if (scene.canvas) {
+        scene.canvas.requestPointerLock();
+    }
 });
 
 // --- LOGICA DI SALTO ---
@@ -15,39 +16,46 @@ let isJumping = false;
 let verticalVelocity = 0;
 const gravity = -0.01;
 const jumpStrength = 0.2;
+let currentY = 0.1; // Altezza base
 
 window.addEventListener('keydown', (e) => {
+    // Saltiamo solo se siamo vicini a terra e premiamo Spazio
     if (e.code === 'Space' && !isJumping) {
         isJumping = true;
         verticalVelocity = jumpStrength;
     }
 });
 
-// Loop per gestire la gravità del salto e l'invio dati
+// Loop principale (50fps)
 setInterval(() => {
-    // 1. Gestione fisica salto locale
-    if (isJumping) {
-        let pos = rig.getAttribute('position');
-        verticalVelocity += gravity;
-        let newY = pos.y + verticalVelocity;
+    let pos = rig.getAttribute('position');
 
-        if (newY <= 0.1) { // Tocca terra
-            newY = 0.1;
+    // 1. Gestione Gravità/Salto
+    if (isJumping || pos.y > 0.1) {
+        verticalVelocity += gravity;
+        currentY = pos.y + verticalVelocity;
+
+        if (currentY <= 0.1) { // Atterraggio
+            currentY = 0.1;
             isJumping = false;
             verticalVelocity = 0;
         }
-        rig.setAttribute('position', { x: pos.x, y: newY, z: pos.z });
+        
+        // Applichiamo solo il cambio di altezza, lasciando che WASD gestisca X e Z
+        rig.setAttribute('position', { x: pos.x, y: currentY, z: pos.z });
     }
 
-    // 2. Invio posizione e ROTAZIONE al server
+    // 2. Invio posizione e rotazione al server
     if (socket.connected) {
-        const rigPos = rig.getAttribute('position');
-        // Importante: prendiamo la rotazione della testa (camera)
         const camRot = localCamera.getAttribute('rotation');
         
         socket.emit('move', {
-            x: rigPos.x, y: rigPos.y, z: rigPos.z,
-            rx: camRot.x, ry: camRot.y, rz: camRot.z
+            x: pos.x, 
+            y: pos.y, 
+            z: pos.z,
+            rx: camRot.x, 
+            ry: camRot.y, 
+            rz: camRot.z
         });
     }
 }, 20);
@@ -64,10 +72,9 @@ socket.on('player-moved', (data) => {
         createPlayerAvatar(data.id, data);
     } else {
         const avatar = otherPlayers[data.id];
-        // Aggiorna posizione
+        // Aggiorna posizione e rotazione degli altri cubi
         avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
-        // Aggiorna rotazione (così vedi dove guardano gli altri!)
-        avatar.setAttribute('rotation', { x: data.rx, y: data.ry, z: data.rz });
+        avatar.setAttribute('rotation', { x: 0, y: data.ry, z: 0 }); // Ruota solo il corpo sull'asse Y
     }
 });
 
@@ -87,7 +94,7 @@ function createPlayerAvatar(id, data) {
     avatar.setAttribute('height', '1.5');
     avatar.setAttribute('depth', '0.5');
     
-    // Aggiungiamo un piccolo "naso" o mirino al cubo per capire dove guarda
+    // Naso per capire la direzione
     const nose = document.createElement('a-box');
     nose.setAttribute('position', '0 0.5 -0.3');
     nose.setAttribute('width', '0.2');
