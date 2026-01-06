@@ -1,56 +1,53 @@
-const socket = io("https://graygarden.onrender.com");
-const rig = document.getElementById('camera-rig');
-const localCamera = document.getElementById('local-player');
-const scene = document.querySelector('a-scene');
-const otherPlayers = {};
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GrayGarden 3D - Solid World</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-// LOGICA SALTO
-let isJumping = false;
-let verticalVelocity = 0;
-const gravity = -0.01;
-const jumpStrength = 0.15;
+    <style>
+      body { margin: 0; overflow: hidden; background-color: #000; }
+      /* CSS per un eventuale menu o interfaccia futura */
+      #instructions {
+        position: absolute; top: 10px; left: 10px;
+        color: white; font-family: sans-serif;
+        background: rgba(0,0,0,0.5); padding: 10px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="instructions">WASD per muoverti | SPAZIO per saltare | Click per bloccare il mouse</div>
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.2) {
-        isJumping = true;
-        verticalVelocity = jumpStrength;
-    }
-});
+    <a-scene renderer="antialias: true" shadow="type: pcfsoft">
+      <a-sky color="#87CEEB"></a-sky>
 
-// LOOP PRINCIPALE
-setInterval(() => {
-    // Gestione Salto
-    if (isJumping || rig.object3D.position.y > 0.1) {
-        verticalVelocity += gravity;
-        rig.object3D.position.y += verticalVelocity;
-        if (rig.object3D.position.y <= 0.1) {
-            rig.object3D.position.y = 0.1;
-            isJumping = false;
-            verticalVelocity = 0;
-        }
-    }
+      <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+      <a-entity light="type: directional; intensity: 0.8; castShadow: true" position="-1 10 1"></a-entity>
 
-    // INVIO DATI (Multiplayer)
-    if (socket.connected) {
-        const pos = rig.object3D.position;
-        const rot = localCamera.getAttribute('rotation');
-        socket.emit('move', {
-            x: pos.x, y: pos.y, z: pos.z,
-            rx: rot.x, ry: rot.y, rz: rot.z
-        });
-    }
-}, 20);
+      <a-plane class="nav-mesh-candidate"
+               rotation="-90 0 0" width="100" height="100" 
+               color="#7BC8A4" static-body></a-plane>
 
-// GESTIONE ALTRI GIOCATORI
-socket.on('player-moved', (data) => {
-    if (!otherPlayers[data.id]) {
-        const el = document.createElement('a-box');
-        el.setAttribute('color', '#FF5733');
-        el.setAttribute('width', '0.5');
-        el.setAttribute('height', '1.5');
-        scene.appendChild(el);
-        otherPlayers[data.id] = el;
-    }
-    otherPlayers[data.id].object3D.position.set(data.x, data.y, data.z);
-    otherPlayers[data.id].object3D.rotation.y = (data.ry * Math.PI) / 180;
-});
+      <a-box class="collidable" static-body position="0 1.5 -10" width="10" height="3" depth="1" color="#9E9E9E"></a-box>
+      <a-box class="collidable" static-body position="5 1 -5" width="2" height="2" depth="2" color="#FF9800"></a-box>
+      <a-box class="collidable" static-body position="-5 0.5 -3" width="2" height="1" depth="2" color="#FFC107"></a-box>
+
+      <a-entity id="camera-rig" 
+                movement-controls="controls: keyboard; speed: 0.2" 
+                kinematic-body="radius: 0.4; height: 1.6"
+                position="0 0.1 0">
+        <a-camera id="local-player" look-controls="pointerLockEnabled: true">
+          <a-entity cursor="fuse: false" 
+                    position="0 0 -1" 
+                    geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" 
+                    material="color: red; shader: flat">
+          </a-entity>
+        </a-camera>
+      </a-entity>
+    </a-scene>
+
+    <script src="script.js"></script>
+  </body>
+</html>
