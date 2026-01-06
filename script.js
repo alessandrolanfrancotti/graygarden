@@ -15,11 +15,11 @@ scene.addEventListener('click', () => {
 let isJumping = false;
 let verticalVelocity = 0;
 const gravity = -0.01;
-const jumpStrength = 0.2;
+const jumpStrength = 0.18; // Leggermente ridotto per stabilità
 
 window.addEventListener('keydown', (e) => {
-    // Salta solo se premi Spazio e non stai già saltando
-    if (e.code === 'Space' && !isJumping) {
+    // Saltiamo solo se siamo vicini al suolo
+    if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.15) {
         isJumping = true;
         verticalVelocity = jumpStrength;
     }
@@ -28,12 +28,13 @@ window.addEventListener('keydown', (e) => {
 // Loop principale a 50fps (20ms)
 setInterval(() => {
     // 1. Gestione Altezza (Salto e Gravità)
-    // Usiamo object3D.position per non interferire con il movimento WASD
     if (isJumping || rig.object3D.position.y > 0.1) {
         verticalVelocity += gravity;
+        
+        // Applichiamo il movimento verticale direttamente all'object3D
         rig.object3D.position.y += verticalVelocity;
 
-        // Controllo atterraggio sul pavimento (altezza 0.1)
+        // Controllo atterraggio (0.1 è l'altezza base del rig)
         if (rig.object3D.position.y <= 0.1) {
             rig.object3D.position.y = 0.1;
             isJumping = false;
@@ -43,7 +44,7 @@ setInterval(() => {
 
     // 2. Invio Dati al Server
     if (socket.connected) {
-        // Prendiamo la posizione aggiornata dal motore 3D (che include collisioni e salto)
+        // Usiamo le coordinate di object3D che sono quelle "reali" processate dalla fisica
         const currentPos = rig.object3D.position;
         const camRot = localCamera.getAttribute('rotation');
         
@@ -52,7 +53,7 @@ setInterval(() => {
             y: currentPos.y, 
             z: currentPos.z,
             rx: camRot.x, 
-            ry: camRot.y, // Direzione dello sguardo
+            ry: camRot.y, 
             rz: camRot.z
         });
     }
@@ -60,26 +61,23 @@ setInterval(() => {
 
 // --- LOGICA MULTIPLAYER ---
 
-// Ricevi i giocatori già connessi
 socket.on('current-players', (players) => {
     Object.keys(players).forEach((id) => {
         if (id !== socket.id) createPlayerAvatar(id, players[id]);
     });
 });
 
-// Aggiorna movimento degli altri giocatori
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
         createPlayerAvatar(data.id, data);
     } else {
         const avatar = otherPlayers[data.id];
-        avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
-        // Gli altri cubi ruotano solo sull'asse Y (sinistra/destra)
-        avatar.setAttribute('rotation', { x: 0, y: data.ry, z: 0 });
+        // Usiamo object3D per fluidità anche sugli altri giocatori
+        avatar.object3D.position.set(data.x, data.y, data.z);
+        avatar.object3D.rotation.set(0, THREE.MathUtils.degToRad(data.ry), 0);
     }
 });
 
-// Rimuovi chi si disconnette
 socket.on('player-disconnected', (id) => {
     if (otherPlayers[id]) {
         scene.removeChild(otherPlayers[id]);
@@ -87,17 +85,15 @@ socket.on('player-disconnected', (id) => {
     }
 });
 
-// Funzione per creare i "cubi" degli altri giocatori
 function createPlayerAvatar(id, data) {
     const avatar = document.createElement('a-box');
     avatar.setAttribute('id', id);
-    avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
-    avatar.setAttribute('color', '#FF5733'); // Colore arancione per gli altri
+    avatar.setAttribute('color', '#FF5733'); 
     avatar.setAttribute('width', '0.5');
     avatar.setAttribute('height', '1.5');
     avatar.setAttribute('depth', '0.5');
+    avatar.object3D.position.set(data.x, data.y, data.z);
     
-    // Aggiungi un "naso" nero per capire dove guardano gli altri
     const nose = document.createElement('a-box');
     nose.setAttribute('position', '0 0.5 -0.3');
     nose.setAttribute('width', '0.2');
