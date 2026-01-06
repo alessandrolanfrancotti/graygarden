@@ -4,32 +4,25 @@ const localCamera = document.getElementById('local-player');
 const scene = document.querySelector('a-scene');
 const otherPlayers = {};
 
-// 1. BLOCCO MOUSE
-scene.addEventListener('click', () => {
-    scene.canvas.requestPointerLock();
-});
-
-// 2. LOGICA SALTO
+// LOGICA SALTO
 let isJumping = false;
 let verticalVelocity = 0;
 const gravity = -0.01;
 const jumpStrength = 0.15;
 
 window.addEventListener('keydown', (e) => {
-    // Salta solo se vicino a terra
     if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.2) {
         isJumping = true;
         verticalVelocity = jumpStrength;
     }
 });
 
-// LOOP DI AGGIORNAMENTO (50fps)
+// LOOP PRINCIPALE
 setInterval(() => {
-    // GESTIONE FISICA SALTO (Solo asse Y)
+    // Gestione Salto
     if (isJumping || rig.object3D.position.y > 0.1) {
         verticalVelocity += gravity;
         rig.object3D.position.y += verticalVelocity;
-
         if (rig.object3D.position.y <= 0.1) {
             rig.object3D.position.y = 0.1;
             isJumping = false;
@@ -37,7 +30,7 @@ setInterval(() => {
         }
     }
 
-    // INVIO POSIZIONE AL SERVER
+    // INVIO DATI (Multiplayer)
     if (socket.connected) {
         const pos = rig.object3D.position;
         const rot = localCamera.getAttribute('rotation');
@@ -48,37 +41,16 @@ setInterval(() => {
     }
 }, 20);
 
-// 3. MULTIPLAYER
-socket.on('current-players', (players) => {
-    Object.keys(players).forEach(id => {
-        if (id !== socket.id) createAvatar(id, players[id]);
-    });
-});
-
+// GESTIONE ALTRI GIOCATORI
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
-        createAvatar(data.id, data);
-    } else {
-        const p = otherPlayers[data.id];
-        p.object3D.position.set(data.x, data.y, data.z);
-        p.object3D.rotation.y = THREE.MathUtils.degToRad(data.ry);
+        const el = document.createElement('a-box');
+        el.setAttribute('color', '#FF5733');
+        el.setAttribute('width', '0.5');
+        el.setAttribute('height', '1.5');
+        scene.appendChild(el);
+        otherPlayers[data.id] = el;
     }
+    otherPlayers[data.id].object3D.position.set(data.x, data.y, data.z);
+    otherPlayers[data.id].object3D.rotation.y = (data.ry * Math.PI) / 180;
 });
-
-socket.on('player-disconnected', (id) => {
-    if (otherPlayers[id]) {
-        scene.removeChild(otherPlayers[id]);
-        delete otherPlayers[id];
-    }
-});
-
-function createAvatar(id, data) {
-    const el = document.createElement('a-box');
-    el.setAttribute('id', id);
-    el.setAttribute('color', '#FF5733');
-    el.setAttribute('width', '0.5');
-    el.setAttribute('height', '1.6');
-    el.setAttribute('depth', '0.5');
-    scene.appendChild(el);
-    otherPlayers[id] = el;
-}
