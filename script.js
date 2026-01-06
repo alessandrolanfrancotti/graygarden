@@ -4,7 +4,7 @@ const rig = document.getElementById('camera-rig');
 const localCamera = document.getElementById('local-player');
 const otherPlayers = {};
 
-// --- BLOCCO DEL MOUSE (Pointer Lock) ---
+// --- BLOCCO DEL MOUSE (FPS Mode) ---
 scene.addEventListener('click', () => {
     if (scene.canvas) {
         scene.canvas.requestPointerLock();
@@ -16,68 +16,70 @@ let isJumping = false;
 let verticalVelocity = 0;
 const gravity = -0.01;
 const jumpStrength = 0.2;
-let currentY = 0.1; // Altezza base
 
 window.addEventListener('keydown', (e) => {
-    // Saltiamo solo se siamo vicini a terra e premiamo Spazio
+    // Salta solo se premi Spazio e non stai già saltando
     if (e.code === 'Space' && !isJumping) {
         isJumping = true;
         verticalVelocity = jumpStrength;
     }
 });
 
-// Loop principale (50fps)
+// Loop principale a 50fps (20ms)
 setInterval(() => {
-    let pos = rig.getAttribute('position');
-
-    // 1. Gestione Gravità/Salto
-    if (isJumping || pos.y > 0.1) {
+    // 1. Gestione Altezza (Salto e Gravità)
+    // Usiamo object3D.position per non interferire con il movimento WASD
+    if (isJumping || rig.object3D.position.y > 0.1) {
         verticalVelocity += gravity;
-        currentY = pos.y + verticalVelocity;
+        rig.object3D.position.y += verticalVelocity;
 
-        if (currentY <= 0.1) { // Atterraggio
-            currentY = 0.1;
+        // Controllo atterraggio sul pavimento (altezza 0.1)
+        if (rig.object3D.position.y <= 0.1) {
+            rig.object3D.position.y = 0.1;
             isJumping = false;
             verticalVelocity = 0;
         }
-        
-        // Applichiamo solo il cambio di altezza, lasciando che WASD gestisca X e Z
-        rig.setAttribute('position', { x: pos.x, y: currentY, z: pos.z });
     }
 
-    // 2. Invio posizione e rotazione al server
+    // 2. Invio Dati al Server
     if (socket.connected) {
+        // Prendiamo la posizione aggiornata dal motore 3D (che include collisioni e salto)
+        const currentPos = rig.object3D.position;
         const camRot = localCamera.getAttribute('rotation');
         
         socket.emit('move', {
-            x: pos.x, 
-            y: pos.y, 
-            z: pos.z,
+            x: currentPos.x, 
+            y: currentPos.y, 
+            z: currentPos.z,
             rx: camRot.x, 
-            ry: camRot.y, 
+            ry: camRot.y, // Direzione dello sguardo
             rz: camRot.z
         });
     }
 }, 20);
 
 // --- LOGICA MULTIPLAYER ---
+
+// Ricevi i giocatori già connessi
 socket.on('current-players', (players) => {
     Object.keys(players).forEach((id) => {
         if (id !== socket.id) createPlayerAvatar(id, players[id]);
     });
 });
 
+// Aggiorna movimento degli altri giocatori
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
         createPlayerAvatar(data.id, data);
     } else {
         const avatar = otherPlayers[data.id];
-        // Aggiorna posizione e rotazione degli altri cubi
         avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
-        avatar.setAttribute('rotation', { x: 0, y: data.ry, z: 0 }); // Ruota solo il corpo sull'asse Y
+        // Gli altri cubi ruotano solo sull'asse Y (sinistra/destra)
+        avatar.setAttribute('rotation', { x: 0, y: data.ry, z: 0 });
     }
 });
 
+// Rimuovi chi si disconnette
 socket.on('player-disconnected', (id) => {
     if (otherPlayers[id]) {
         scene.removeChild(otherPlayers[id]);
@@ -85,16 +87,17 @@ socket.on('player-disconnected', (id) => {
     }
 });
 
+// Funzione per creare i "cubi" degli altri giocatori
 function createPlayerAvatar(id, data) {
     const avatar = document.createElement('a-box');
     avatar.setAttribute('id', id);
     avatar.setAttribute('position', { x: data.x, y: data.y, z: data.z });
-    avatar.setAttribute('color', '#FF5733'); 
+    avatar.setAttribute('color', '#FF5733'); // Colore arancione per gli altri
     avatar.setAttribute('width', '0.5');
     avatar.setAttribute('height', '1.5');
     avatar.setAttribute('depth', '0.5');
     
-    // Naso per capire la direzione
+    // Aggiungi un "naso" nero per capire dove guardano gli altri
     const nose = document.createElement('a-box');
     nose.setAttribute('position', '0 0.5 -0.3');
     nose.setAttribute('width', '0.2');
