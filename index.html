@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Gray Garden</title>
+    <title>GrayGarden 3D - FPS Physics</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
-  
   <body>
-    <a-scene physics="debug: true; gravity: -9.8">
+    <a-scene physics="debug: true; gravity: -9.8; driver: local">
       
       <a-sky color="#87CEEB"></a-sky>
 
@@ -25,22 +27,26 @@
       <a-box static-body position="8 1.25 -5" width="2" height="2.5" depth="2" color="#FF5722"></a-box>
       <a-box static-body position="0 5 -15" width="1" height="10" depth="1" color="#3F51B5"></a-box>
       <a-box static-body position="-10 1.5 -5" width="1" height="3" depth="10" color="#9E9E9E"></a-box>
-      <a-box static-body position="-1 0.5 -5" color="#4CC3D9"></a-box>
 
       <a-entity id="camera-rig" 
-          movement-controls="controls: keyboard; speed: 0.3" 
-          kinematic-body="radius: 0.4; height: 1.5"
-          position="0 0.1 0">
-    <a-camera id="local-player" look-controls="pointerLockEnabled: true">
-        <a-cursor color="red"></a-cursor>
-    </a-camera>
-</a-entity>
+                movement-controls="controls: keyboard; speed: 0.3" 
+                kinematic-body="radius: 0.4; height: 1.6" 
+                position="0 0.1 0">
+        
+        <a-camera id="local-player" 
+                  look-controls="pointerLockEnabled: true">
+          
+          <a-cursor color="red" scale="0.5 0.5 0.5"></a-cursor>
+          
+          <a-box width="0.5" height="1.6" depth="0.5" 
+                 color="#4CC3D9" 
+                 position="0 -0.8 0">
+          </a-box>
+        </a-camera>
+      </a-entity>
 
     </a-scene>
 
     <script src="script.js"></script>
   </body>
 </html>
-
-
-
