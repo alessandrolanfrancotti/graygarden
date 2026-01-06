@@ -1,35 +1,31 @@
 const socket = io("https://graygarden.onrender.com");
-const scene = document.querySelector('a-scene');
 const rig = document.getElementById('camera-rig');
 const localCamera = document.getElementById('local-player');
+const scene = document.querySelector('a-scene');
 const otherPlayers = {};
 
-// Forza il caricamento dei corpi fisici
-scene.addEventListener('loaded', () => {
-    console.log("Scena caricata, fisica in ascolto...");
-});
-
-// LOCK MOUSE
+// 1. BLOCCO MOUSE
 scene.addEventListener('click', () => {
-    if (scene.canvas) scene.canvas.requestPointerLock();
+    scene.canvas.requestPointerLock();
 });
 
-// SALTO
+// 2. LOGICA SALTO
 let isJumping = false;
 let verticalVelocity = 0;
-const gravity = -0.012;
-const jumpStrength = 0.22;
+const gravity = -0.01;
+const jumpStrength = 0.15;
 
 window.addEventListener('keydown', (e) => {
+    // Salta solo se vicino a terra
     if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.2) {
         isJumping = true;
         verticalVelocity = jumpStrength;
     }
 });
 
-// LOOP PRINCIPALE
+// LOOP DI AGGIORNAMENTO (50fps)
 setInterval(() => {
-    // Gestione altezza
+    // GESTIONE FISICA SALTO (Solo asse Y)
     if (isJumping || rig.object3D.position.y > 0.1) {
         verticalVelocity += gravity;
         rig.object3D.position.y += verticalVelocity;
@@ -41,28 +37,31 @@ setInterval(() => {
         }
     }
 
-    // Invio dati multiplayer
+    // INVIO POSIZIONE AL SERVER
     if (socket.connected) {
-        const p = rig.object3D.position;
-        const r = localCamera.getAttribute('rotation');
-        socket.emit('move', { x: p.x, y: p.y, z: p.z, rx: r.x, ry: r.y, rz: r.z });
+        const pos = rig.object3D.position;
+        const rot = localCamera.getAttribute('rotation');
+        socket.emit('move', {
+            x: pos.x, y: pos.y, z: pos.z,
+            rx: rot.x, ry: rot.y, rz: rot.z
+        });
     }
 }, 20);
 
-// MULTIPLAYER (Gestione avatar)
+// 3. MULTIPLAYER
 socket.on('current-players', (players) => {
-    Object.keys(players).forEach((id) => {
-        if (id !== socket.id) createPlayerAvatar(id, players[id]);
+    Object.keys(players).forEach(id => {
+        if (id !== socket.id) createAvatar(id, players[id]);
     });
 });
 
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
-        createPlayerAvatar(data.id, data);
+        createAvatar(data.id, data);
     } else {
-        const avatar = otherPlayers[data.id];
-        avatar.object3D.position.set(data.x, data.y, data.z);
-        avatar.object3D.rotation.y = (data.ry * Math.PI) / 180;
+        const p = otherPlayers[data.id];
+        p.object3D.position.set(data.x, data.y, data.z);
+        p.object3D.rotation.y = THREE.MathUtils.degToRad(data.ry);
     }
 });
 
@@ -73,19 +72,13 @@ socket.on('player-disconnected', (id) => {
     }
 });
 
-function createPlayerAvatar(id, data) {
-    const avatar = document.createElement('a-box');
-    avatar.setAttribute('color', '#FF5733');
-    avatar.setAttribute('width', '0.5');
-    avatar.setAttribute('height', '1.6');
-    avatar.setAttribute('depth', '0.5');
-    
-    const nose = document.createElement('a-box');
-    nose.setAttribute('position', '0 0.5 -0.3');
-    nose.setAttribute('width', '0.2'); nose.setAttribute('height', '0.2'); nose.setAttribute('depth', '0.4');
-    nose.setAttribute('color', 'black');
-    
-    avatar.appendChild(nose);
-    scene.appendChild(avatar);
-    otherPlayers[id] = avatar;
+function createAvatar(id, data) {
+    const el = document.createElement('a-box');
+    el.setAttribute('id', id);
+    el.setAttribute('color', '#FF5733');
+    el.setAttribute('width', '0.5');
+    el.setAttribute('height', '1.6');
+    el.setAttribute('depth', '0.5');
+    scene.appendChild(el);
+    otherPlayers[id] = el;
 }
