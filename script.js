@@ -26,13 +26,30 @@ scene.add(new THREE.GridHelper(20, 20));
 createWall(0, -10, 20, 1); createWall(0, 10, 20, 1);
 createWall(-10, 0, 1, 20); createWall(10, 0, 1, 20);
 
+// --- BERSAGLI (Target) ---
+const targets = [];
+function createTarget(x, z) {
+    const targetGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const target = new THREE.Mesh(targetGeo, targetMat);
+    target.position.set(x, 0.4, z);
+    scene.add(target);
+    targets.push(target);
+}
+
+// Creiamo alcuni bersagli casuali
+createTarget(3, -5);
+createTarget(-4, 2);
+createTarget(0, -7);
+createTarget(6, 6);
+
 // --- GIOCATORE ---
-const player = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+const player = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x00ff00, transparent: true, opacity: 0 })); // Invisibile in 1a persona
 player.position.y = 0.5;
 scene.add(player);
 const otherPlayers = {};
 
-// --- SPADA (Mano Destra) ---
+// --- SPADA ---
 const swordGroup = new THREE.Group();
 const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
 blade.position.y = 0.4;
@@ -41,50 +58,44 @@ const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.15), new THREE.
 handle.position.y = -0.1;
 swordGroup.add(handle);
 
-swordGroup.position.set(0.4, -0.4, -0.6); // Posizione base
+swordGroup.position.set(0.4, -0.4, -0.6);
 swordGroup.rotation.z = Math.PI / 4;
 swordGroup.scale.set(0.5, 0.5, 0.5);
 camera.add(swordGroup);
-scene.add(camera); // Importante per vedere la spada attaccata alla camera
+scene.add(camera);
 
-// --- LOGICA ATTACCO (OSCILLAZIONE) ---
+// --- LOGICA ATTACCO ---
 let isAttacking = false;
 let attackTime = 0;
+let hasHitInThisSwing = false; // Per non colpire più volte nello stesso fendente
 
 document.addEventListener('mousedown', (e) => {
     if (document.pointerLockElement === document.body && !isAttacking) {
         isAttacking = true;
         attackTime = 0;
+        hasHitInThisSwing = false;
     } else {
         document.body.requestPointerLock();
     }
 });
 
-// --- CONTROLLI MOUSE (First Person) ---
-let pitch = 0;
-let yaw = 0;
-
+// --- CONTROLLI ---
+let pitch = 0, yaw = 0;
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
-        const sensitivity = 0.002;
-        yaw -= e.movementX * sensitivity;
-        pitch -= e.movementY * sensitivity;
+        yaw -= e.movementX * 0.002;
+        pitch -= e.movementY * 0.002;
         pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, pitch));
     }
 });
 
-// --- CONTROLLI TASTIERA ---
 const keys = {};
 let velY = 0;
-const speed = 0.12;
 window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 function checkCollision(newX, newZ) {
-    const playerBox = new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(newX, player.position.y, newZ),
-        new THREE.Vector3(0.9, 0.9, 0.9)
-    );
+    const playerBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(0.9, 0.9, 0.9));
     for (let wall of walls) {
         if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) return true;
     }
@@ -92,60 +103,73 @@ function checkCollision(newX, newZ) {
 }
 
 function update() {
-    // Rotazione Giocatore
     player.rotation.y = yaw;
+    let moveX = 0, moveZ = 0;
+    const speed = 0.12;
 
-    // Movimento
-    let moveX = 0;
-    let moveZ = 0;
     if (keys['KeyW']) { moveX -= Math.sin(yaw); moveZ -= Math.cos(yaw); }
     if (keys['KeyS']) { moveX += Math.sin(yaw); moveZ += Math.cos(yaw); }
     if (keys['KeyA']) { moveX -= Math.cos(yaw); moveZ += Math.sin(yaw); }
     if (keys['KeyD']) { moveX += Math.cos(yaw); moveZ -= Math.sin(yaw); }
 
-    const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-    if (length > 0) {
-        moveX = (moveX / length) * speed;
-        moveZ = (moveZ / length) * speed;
-    }
-
     if (!checkCollision(player.position.x + moveX, player.position.z)) player.position.x += moveX;
     if (!checkCollision(player.position.x, player.position.z + moveZ)) player.position.z += moveZ;
 
-    // Salto
     if (keys['Space'] && player.position.y <= 0.51) velY = 0.15;
     velY -= 0.008;
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
 
-    // Camera
     camera.position.copy(player.position);
     camera.position.y += 0.4;
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
-    // --- ANIMAZIONE SPADA ---
+    // --- ANIMAZIONE SPADA E GESTIONE COLPI ---
     if (isAttacking) {
-        attackTime += 0.15; // Velocità dell'attacco
-        // Effetto oscillazione (avanti e rotazione)
-        swordGroup.position.z = -0.6 - Math.sin(attackTime) * 0.4;
-        swordGroup.rotation.x = -Math.sin(attackTime) * 1.2;
-        
-        if (attackTime >= Math.PI) { // Fine del ciclo di oscillazione
-            isAttacking = false;
-            attackTime = 0;
-            swordGroup.position.z = -0.6; // Ritorna in posizione base
-            swordGroup.rotation.x = 0;
+        attackTime += 0.15;
+        swordGroup.position.z = -0.6 - Math.sin(attackTime) * 0.5;
+        swordGroup.rotation.x = -Math.sin(attackTime) * 1.5;
+
+        // Controllo collisione spada (a metà fendente)
+        if (!hasHitInThisSwing && attackTime > 1.0 && attackTime < 2.0) {
+            checkSwordHit();
         }
-    } else {
-        // Oscillazione leggera quando si cammina (effetto "bobbing")
-        if (length > 0) {
-            const bob = Math.sin(Date.now() * 0.01) * 0.02;
-            swordGroup.position.y = -0.4 + bob;
+
+        if (attackTime >= Math.PI) {
+            isAttacking = false;
+            swordGroup.position.z = -0.6;
+            swordGroup.rotation.x = 0;
         }
     }
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
+}
+
+function checkSwordHit() {
+    // Creiamo un raggio che parte dalla camera e va in avanti
+    const raycaster = new THREE.Raycaster();
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(camera.quaternion);
+    raycaster.set(camera.position, direction);
+
+    // Controlliamo se il raggio colpisce i bersagli entro 2 unità di distanza
+    const intersects = raycaster.intersectObjects(targets);
+
+    if (intersects.length > 0 && intersects[0].distance < 2.5) {
+        const hitObject = intersects[0].object;
+        
+        // Effetto "morte" del bersaglio
+        hitObject.scale.set(0.1, 0.1, 0.1); // Lo rimpiccioliamo
+        setTimeout(() => {
+            scene.remove(hitObject);
+            const index = targets.indexOf(hitObject);
+            if (index > -1) targets.splice(index, 1);
+        }, 100);
+
+        hasHitInThisSwing = true;
+        console.log("Colpito!");
+    }
 }
 
 // --- MULTIPLAYER ---
@@ -158,17 +182,9 @@ socket.on('player-moved', (data) => {
     otherPlayers[data.id].rotation.y = data.rotY || 0;
 });
 
-socket.on('player-disconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } });
-
 function animate() {
     requestAnimationFrame(animate);
     update();
     renderer.render(scene, camera);
 }
 animate();
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
