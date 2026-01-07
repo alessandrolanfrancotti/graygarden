@@ -1,3 +1,38 @@
+AFRAME.registerComponent("player-collision", {
+  tick: function () {
+    const pos = this.el.object3D.position;
+
+    // Limiti stanza (tenendo conto della dimensione del player)
+    const limit = 14.5;
+
+    if (pos.x > limit) pos.x = limit;
+    if (pos.x < -limit) pos.x = -limit;
+    if (pos.z > limit) pos.z = limit;
+    if (pos.z < -limit) pos.z = -limit;
+
+    // Gravità / salto
+    if (isJumping || pos.y > 0.1) {
+      vVel -= 0.01;
+      pos.y += vVel;
+      if (pos.y <= 0.1) {
+        pos.y = 0.1;
+        isJumping = false;
+        vVel = 0;
+      }
+    }
+
+    // Multiplayer sync
+    if (socket.connected) {
+      socket.emit("move", {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+        ry: localCamera.getAttribute("rotation").y
+      });
+    }
+  }
+});
+
 const socket = io("https://graygarden.onrender.com");
 const rig = document.getElementById('camera-rig');
 const localCamera = document.getElementById('local-player');
