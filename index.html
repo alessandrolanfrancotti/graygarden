@@ -4,38 +4,49 @@
   <meta charset="utf-8">
   <title>Stanza 3D</title>
 
+  <!-- A-FRAME -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+  <!-- MOVIMENTO (movement-controls) -->
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+
+  <!-- FISICA (collisioni vere) -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
 </head>
 
 <body>
-<a-scene physics="debug: false">
+<a-scene physics>
 
-  <!-- LUCE -->
-  <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+  <!-- LUCI -->
+  <a-entity light="type: ambient; intensity: 0.7"></a-entity>
   <a-entity light="type: directional; intensity: 0.6" position="0 10 5"></a-entity>
 
   <!-- PAVIMENTO -->
-  <a-box static-body width="20" height="1" depth="20" position="0 -0.5 0" color="#7BC8A4"></a-box>
+  <a-box static-body width="20" height="1" depth="20"
+         position="0 -0.5 0" color="#7BC8A4"></a-box>
 
   <!-- MURI -->
-  <a-box static-body width="20" height="5" depth="1" position="0 2.5 -10" color="#444"></a-box>
-  <a-box static-body width="20" height="5" depth="1" position="0 2.5 10"  color="#444"></a-box>
-  <a-box static-body width="1" height="5" depth="20" position="10 2.5 0"  color="#444"></a-box>
-  <a-box static-body width="1" height="5" depth="20" position="-10 2.5 0" color="#444"></a-box>
+  <a-box static-body width="20" height="5" depth="1"
+         position="0 2.5 -10" color="#444"></a-box>
+
+  <a-box static-body width="20" height="5" depth="1"
+         position="0 2.5 10" color="#444"></a-box>
+
+  <a-box static-body width="1" height="5" depth="20"
+         position="10 2.5 0" color="#444"></a-box>
+
+  <a-box static-body width="1" height="5" depth="20"
+         position="-10 2.5 0" color="#444"></a-box>
 
   <!-- PLAYER -->
-  <a-entity position="0 1.6 0"
-            movement-controls
-            kinematic-body>
+  <a-entity movement-controls kinematic-body position="0 1.6 0">
 
-    <a-camera look-controls wasd-controls="enabled:false"></a-camera>
+    <a-camera look-controls>
+      <a-cursor></a-cursor>
+    </a-camera>
 
   </a-entity>
 
 </a-scene>
-  <script src="script.js"></script>
-
 </body>
 </html>
-
