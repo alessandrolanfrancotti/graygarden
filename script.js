@@ -47,12 +47,12 @@ function createWall(x, z, w, d) {
     scene.add(wall);
     objects.push(wall);
 }
-// Confini dell'arena
+
 const half = ARENA_SIZE / 2;
-createWall(0, -half, ARENA_SIZE, 2); // Nord
-createWall(0, half, ARENA_SIZE, 2);  // Sud
-createWall(-half, 0, 2, ARENA_SIZE); // Ovest
-createWall(half, 0, 2, ARENA_SIZE);  // Est
+createWall(0, -half, ARENA_SIZE, 2); 
+createWall(0, half, ARENA_SIZE, 2);  
+createWall(-half, 0, 2, ARENA_SIZE); 
+createWall(half, 0, 2, ARENA_SIZE);  
 
 for (let i = 0; i < 60; i++) {
     let rx = (Math.random()-0.5)*90, rz = (Math.random()-0.5)*90;
@@ -68,17 +68,17 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE), ne
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// --- PLAYER LOCALE (VISIBILE SOLO IN 3A PERSONA) ---
+// --- PLAYER LOCALE ---
 const playerContainer = new THREE.Object3D();
 scene.add(playerContainer);
 
 const localPlayerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: playerTexture, transparent: true }));
 localPlayerSprite.scale.set(2, 2, 1);
 localPlayerSprite.position.y = 1;
-localPlayerSprite.visible = false; // Nascosto in prima persona
+localPlayerSprite.visible = false; 
 playerContainer.add(localPlayerSprite);
 
-// --- SPADA ---
+// --- SPADA (Attaccata alla Camera per la prima persona, ma visibile sempre) ---
 const swordSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: swordTexture }));
 swordSprite.scale.set(1.0, 2.5, 1);
 swordSprite.position.set(0.75, -0.6, -1.2);
@@ -95,7 +95,7 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyV') {
         isThirdPerson = !isThirdPerson;
         localPlayerSprite.visible = isThirdPerson;
-        swordSprite.visible = !isThirdPerson;
+        // La spada rimane visibile in entrambi i casi!
     }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
@@ -115,7 +115,6 @@ document.addEventListener('mousemove', (e) => {
 });
 
 function update(delta) {
-    // Movimento
     let mX = 0, mZ = 0;
     const speed = 12 * delta;
     if (keys['KeyW']) { mX -= Math.sin(yaw); mZ -= Math.cos(yaw); }
@@ -136,7 +135,7 @@ function update(delta) {
     for (let obj of objects) { if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) { collision = true; break; } }
     if (!collision) { playerContainer.position.x = nextX; playerContainer.position.z = nextZ; }
 
-    // Gestione Camera
+    // Gestione Camera e Spada
     if (isThirdPerson) {
         const dist = 5;
         camera.position.set(
@@ -145,15 +144,19 @@ function update(delta) {
             playerContainer.position.z + Math.cos(yaw) * dist
         );
         camera.lookAt(playerContainer.position.x, playerContainer.position.y + 1, playerContainer.position.z);
+        // Regoliamo la spada in terza persona per non averla in faccia
+        swordSprite.position.set(1.5, -1, -2);
     } else {
         camera.position.copy(playerContainer.position).y += 1.6;
         camera.rotation.set(pitch, yaw, 0);
+        // Reset posizione spada per la prima persona
+        swordSprite.position.set(0.75, -0.6, -1.2);
     }
 
     // Animazione Spada
     if (isAttacking) {
         attackTime += 14 * delta;
-        swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
+        swordSprite.position.z -= Math.sin(attackTime) * 0.7;
         swordSprite.material.rotation = Math.sin(attackTime) * 0.8;
         if (attackTime >= Math.PI) { isAttacking = false; swordSprite.material.rotation = 0; }
     }
