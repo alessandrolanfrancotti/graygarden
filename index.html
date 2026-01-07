@@ -1,34 +1,39 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GrayGarden - Physics Fixed</title>
+    <meta charset="utf-8">
+    <title>GrayGarden - Sputnik Style</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
-    <a-scene physics="debug: true; gravity: -9.8">
+    <a-scene physics="debug: true; gravity: -9.8; driver: local">
       
-      <a-sky color="#87CEEB"></a-sky>
+      <a-assets>
+        </a-assets>
+
+      <a-sky color="#ECECEC"></a-sky>
 
       <a-plane static-body position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
 
-      <a-box class="collidable" static-body position="0 2.5 -15" width="30" height="5" depth="1" color="#BCBBBB"></a-box>
-      <a-box class="collidable" static-body position="0 2.5 15" width="30" height="5" depth="1" color="#BCBBBB"></a-box>
-      <a-box class="collidable" static-body position="15 2.5 0" width="1" height="5" depth="31" color="#BCBBBB"></a-box>
-      <a-box class="collidable" static-body position="-15 2.5 0" width="1" height="5" depth="31" color="#BCBBBB"></a-box>
+      <a-box static-body position="0 2.5 -15" width="30" height="5" depth="1" color="#333"></a-box>
+      <a-box static-body position="0 2.5 15" width="30" height="5" depth="1" color="#333"></a-box>
+      <a-box static-body position="15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
+      <a-box static-body position="-15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
 
       <a-entity id="camera-rig" 
                 movement-controls="controls: keyboard; speed: 0.2" 
                 kinematic-body="radius: 0.5" 
                 position="0 0.1 0">
         <a-camera id="local-player" look-controls="pointerLockEnabled: true">
-          <a-cursor raycaster="objects: .collidable" color="red"></a-cursor>
+          <a-cursor color="red"></a-cursor>
         </a-camera>
       </a-entity>
 
     </a-scene>
+
     <script src="script.js"></script>
   </body>
 </html>
