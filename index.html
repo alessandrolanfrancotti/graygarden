@@ -18,21 +18,22 @@
       <a-box position="15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
       <a-box position="-15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
 
-      <a-entity id="camera-rig"
-          movement-controls="controls: keyboard; speed: 0.2"
-          player-collision
-          position="0 0.1 0">
+     <a-entity id="camera-rig" position="0 0.1 0" player-controller>
 
-        
-        <a-box id="player-body" width="0.5" height="1.5" depth="0.5" position="0 0.75 0" color="blue"></a-box>
+  <a-box id="player-body" width="0.5" height="1.5" depth="0.5"
+         position="0 0.75 0" color="blue"></a-box>
 
-        <a-camera id="local-player" position="0 1.6 0" look-controls="pointerLockEnabled: true">
-          <a-cursor color="red"></a-cursor>
-        </a-camera>
-      </a-entity>
+  <a-camera id="local-player" position="0 1.6 0"
+            look-controls="pointerLockEnabled: true">
+    <a-cursor color="red"></a-cursor>
+  </a-camera>
+
+</a-entity>
+
     </a-scene>
 
     <script src="script.js"></script>
   </body>
 </html>
+
 
