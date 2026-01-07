@@ -2,10 +2,8 @@ const socket = io("http://localhost:3000");
 
 // --- SETUP SCENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101015); // Grigio molto scuro, non nero
-
-// NEBBIA MENO AGGRESSIVA: spostata più lontano (da 10 a 60 unità)
-scene.fog = new THREE.Fog(0x101015, 10, 60); 
+scene.background = new THREE.Color(0x101015);
+scene.fog = new THREE.Fog(0x101015, 10, 50); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14,24 +12,18 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 
-// --- LUCI (POTENZIATE) ---
-// Luce ambientale molto più forte per vedere i volumi
+// --- LUCI ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); 
 scene.add(ambientLight);
 
-// Luce direzionale (Luna) che proietta luce bianca/azzurra
 const moonLight = new THREE.DirectionalLight(0xaabbff, 0.8);
 moonLight.position.set(15, 30, 15);
 scene.add(moonLight);
 
-// --- MONOLITI E MONDO ---
+// --- MAPPA LIMITATA (ARENA) ---
+const ARENA_SIZE = 40; // Dimensione dell'area di gioco
 const objects = []; 
-// Materiale più chiaro (grigio scuro invece di nero) per riflettere la luce
-const monolithMat = new THREE.MeshStandardMaterial({ 
-    color: 0x222222, 
-    roughness: 0.8, 
-    metalness: 0.2 
-});
+const monolithMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 });
 
 function createMonolith(x, z) {
     const height = 4 + Math.random() * 12; 
@@ -43,37 +35,43 @@ function createMonolith(x, z) {
     objects.push(mesh);
 }
 
-// Generiamo 60 monoliti
-for (let i = 0; i < 60; i++) {
-    let rx = (Math.random() - 0.5) * 120;
-    let rz = (Math.random() - 0.5) * 120;
-    if (Math.abs(rx) > 6 || Math.abs(rz) > 6) createMonolith(rx, rz);
+// Monoliti sparsi solo nell'arena
+for (let i = 0; i < 35; i++) {
+    let rx = (Math.random() - 0.5) * (ARENA_SIZE - 5);
+    let rz = (Math.random() - 0.5) * (ARENA_SIZE - 5);
+    if (Math.abs(rx) > 5 || Math.abs(rz) > 5) createMonolith(rx, rz);
 }
 
-// Pavimento grigio scuro (più visibile)
+// Pavimento ridotto
 const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(300, 300),
+    new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE),
     new THREE.MeshStandardMaterial({ color: 0x151515 })
 );
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// --- BERSAGLI (Anime Rosse) ---
+// Mura di confine per non cadere/scappare
+function createBoundary(x, z, w, d) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 10, d), new THREE.MeshStandardMaterial({ color: 0x050505 }));
+    wall.position.set(x, 5, z);
+    scene.add(wall);
+    objects.push(wall);
+}
+const half = ARENA_SIZE / 2;
+createBoundary(0, -half, ARENA_SIZE, 1); // Nord
+createBoundary(0, half, ARENA_SIZE, 1);  // Sud
+createBoundary(-half, 0, 1, ARENA_SIZE); // Ovest
+createBoundary(half, 0, 1, ARENA_SIZE);  // Est
+
+// --- BERSAGLI ---
 const targets = [];
 function createTarget(x, z) {
-    const target = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1), 
-        new THREE.MeshStandardMaterial({ 
-            color: 0xff0000, 
-            emissive: 0xff0000, 
-            emissiveIntensity: 1 
-        })
-    );
+    const target = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 }));
     target.position.set(x, 0.8, z);
     scene.add(target);
     targets.push(target);
 }
-for(let i=0; i<12; i++) createTarget((Math.random()-0.5)*60, (Math.random()-0.5)*60);
+for(let i=0; i<8; i++) createTarget((Math.random()-0.5)*(ARENA_SIZE-10), (Math.random()-0.5)*(ARENA_SIZE-10));
 
 // --- PARTICELLE ---
 const particles = [];
@@ -81,10 +79,7 @@ function createExplosion(pos) {
     for (let i = 0; i < 15; i++) {
         const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
         p.position.copy(pos);
-        p.userData = { 
-            vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), 
-            life: 1.0 
-        };
+        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), life: 1.0 };
         scene.add(p);
         particles.push(p);
     }
@@ -96,12 +91,11 @@ player.position.set(0, 0.5, 0);
 scene.add(player);
 const otherPlayers = {};
 
-// --- SPADA (SPRITE STRETTO) ---
+// --- SPADA (SPRITE) ---
 const textureLoader = new THREE.TextureLoader();
 const swordTexture = textureLoader.load('sword.png');
 const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent: true });
 const swordSprite = new THREE.Sprite(swordMaterial);
-
 swordSprite.material.rotation = Math.PI; 
 swordSprite.scale.set(0.6, 2.0, 1); 
 swordSprite.position.set(0.7, -0.6, -1.2); 
@@ -176,25 +170,20 @@ function update(delta) {
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
-    // Particelle
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.position.add(p.userData.vel);
         p.userData.life -= 0.03;
-        p.scale.setScalar(p.userData.life);
+        p.scale.setScalar(Math.max(0.001, p.userData.life));
         if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
     }
 
-    // Animazione Spada
     if (isAttacking) {
         attackTime += 14 * delta; 
         swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
         swordSprite.material.rotation = Math.PI + Math.sin(attackTime) * 1.2;
         if (!hasHitInThisSwing && attackTime > 1.2) checkSwordHit();
-        if (attackTime >= Math.PI) {
-            isAttacking = false;
-            swordSprite.material.rotation = Math.PI;
-        }
+        if (attackTime >= Math.PI) { isAttacking = false; swordSprite.material.rotation = Math.PI; }
     } else if (len > 0) {
         swordSprite.position.y = -0.6 + Math.sin(Date.now() * 0.012) * 0.04;
     }
@@ -202,7 +191,6 @@ function update(delta) {
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
 }
 
-// --- MULTIPLAYER ---
 socket.on('player-moved', (d) => {
     if (!otherPlayers[d.id]) {
         otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x444444}));
