@@ -32,11 +32,32 @@ player.position.y = 0.5;
 scene.add(player);
 const otherPlayers = {};
 
+// --- SPADA (Mano Destra) ---
+const swordGroup = new THREE.Group(); // Useremo un gruppo per la spada
+const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.8, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc }) // Lama grigia
+);
+blade.position.y = 0.4; // Posiziona la lama sopra l'impugnatura
+swordGroup.add(blade);
+
+const handle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15, 0.2, 0.15),
+    new THREE.MeshStandardMaterial({ color: 0x8B4513 }) // Impugnatura marrone
+);
+handle.position.y = -0.1; // Posiziona l'impugnatura
+swordGroup.add(handle);
+
+// Posiziona la spada nella visuale della camera
+swordGroup.position.set(0.4, -0.3, -0.6); // Destra, in basso, leggermente in avanti
+swordGroup.rotation.z = Math.PI / 4; // Inclina leggermente la spada
+swordGroup.scale.set(0.5, 0.5, 0.5); // Rimpicciolisci la spada
+camera.add(swordGroup); // Aggiungi la spada direttamente alla camera
+
 // --- CONTROLLI MOUSE (First Person) ---
 let pitch = 0; // Rotazione su/giù
 let yaw = 0;   // Rotazione destra/sinistra
 
-// Blocca il mouse al click sulla finestra
 document.addEventListener('click', () => {
     document.body.requestPointerLock();
 });
@@ -47,7 +68,6 @@ document.addEventListener('mousemove', (e) => {
         yaw -= e.movementX * sensitivity;
         pitch -= e.movementY * sensitivity;
         
-        // Limita la visuale su e giù (evita di fare il giro completo)
         pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, pitch));
     }
 });
@@ -62,7 +82,7 @@ window.addEventListener('keyup', (e) => keys[e.code] = false);
 function checkCollision(newX, newZ) {
     const playerBox = new THREE.Box3().setFromCenterAndSize(
         new THREE.Vector3(newX, player.position.y, newZ),
-        new THREE.Vector3(0.9, 0.9, 0.9) // Box leggermente più piccola per scivolare meglio
+        new THREE.Vector3(0.9, 0.9, 0.9)
     );
     for (let wall of walls) {
         if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) return true;
@@ -71,10 +91,8 @@ function checkCollision(newX, newZ) {
 }
 
 function update() {
-    // 1. Ruota il giocatore in base al mouse (sinistra/destra)
     player.rotation.y = yaw;
 
-    // 2. Calcola direzione movimento in base alla rotazione
     let moveX = 0;
     let moveZ = 0;
 
@@ -83,27 +101,23 @@ function update() {
     if (keys['KeyA']) { moveX -= Math.cos(yaw); moveZ += Math.sin(yaw); }
     if (keys['KeyD']) { moveX += Math.cos(yaw); moveZ -= Math.sin(yaw); }
 
-    // Normalizza movimento per non andare più veloci in diagonale
     const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
     if (length > 0) {
         moveX = (moveX / length) * speed;
         moveZ = (moveZ / length) * speed;
     }
 
-    // 3. Collisioni
     if (!checkCollision(player.position.x + moveX, player.position.z)) player.position.x += moveX;
     if (!checkCollision(player.position.x, player.position.z + moveZ)) player.position.z += moveZ;
 
-    // 4. Salto e Gravità
     if (keys['Space'] && player.position.y <= 0.51) velY = 0.15;
     velY -= 0.008;
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
 
-    // 5. Posiziona la Camera (Prima persona)
     camera.position.copy(player.position);
-    camera.position.y += 0.4; // Altezza "occhi"
-    camera.rotation.order = "YXZ"; // Fondamentale per FPS
+    camera.position.y += 0.4;
+    camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
@@ -127,3 +141,10 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+
+// Gestione ridimensionamento finestra
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
