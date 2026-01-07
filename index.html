@@ -1,39 +1,38 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>GrayGarden - Controllo Manuale</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  </head>
-  <body>
-    <a-scene>
-      <a-sky color="#87CEEB"></a-sky>
+<head>
+  <meta charset="utf-8">
+  <title>Stanza 3D</title>
 
-      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
+</head>
 
-      <a-box position="0 2.5 -15" width="30" height="5" depth="1" color="#333"></a-box>
-      <a-box position="0 2.5 15" width="30" height="5" depth="1" color="#333"></a-box>
-      <a-box position="15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
-      <a-box position="-15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
+<body>
+<a-scene physics="debug: false">
 
-     <a-entity id="camera-rig" position="0 0.1 0" player-controller>
+  <!-- LUCE -->
+  <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+  <a-entity light="type: directional; intensity: 0.6" position="0 10 5"></a-entity>
 
-  <a-box id="player-body" width="0.5" height="1.5" depth="0.5"
-         position="0 0.75 0" color="blue"></a-box>
+  <!-- PAVIMENTO -->
+  <a-box static-body width="20" height="1" depth="20" position="0 -0.5 0" color="#7BC8A4"></a-box>
 
-  <a-camera id="local-player" position="0 1.6 0"
-            look-controls="pointerLockEnabled: true">
-    <a-cursor color="red"></a-cursor>
-  </a-camera>
+  <!-- MURI -->
+  <a-box static-body width="20" height="5" depth="1" position="0 2.5 -10" color="#444"></a-box>
+  <a-box static-body width="20" height="5" depth="1" position="0 2.5 10"  color="#444"></a-box>
+  <a-box static-body width="1" height="5" depth="20" position="10 2.5 0"  color="#444"></a-box>
+  <a-box static-body width="1" height="5" depth="20" position="-10 2.5 0" color="#444"></a-box>
 
-</a-entity>
+  <!-- PLAYER -->
+  <a-entity position="0 1.6 0"
+            movement-controls
+            kinematic-body>
 
-    </a-scene>
+    <a-camera look-controls wasd-controls="enabled:false"></a-camera>
 
-    <script src="script.js"></script>
-  </body>
+  </a-entity>
+
+</a-scene>
+</body>
 </html>
-
-
