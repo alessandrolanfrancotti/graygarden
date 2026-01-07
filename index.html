@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GrayGarden 3D - Collision Fix</title>
+    <title>GrayGarden 3D - Fixed Physics</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
-    <a-scene physics="debug: true; gravity: -9.8; friction: 0.1; restitution: 0">
+    <a-scene physics="debug: true; gravity: -9.8; driver: local; friction: 0">
       
       <a-sky color="#87CEEB"></a-sky>
 
       <a-plane static-body position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
 
-      <a-box static-body position="0 2.5 -15" width="30" height="5" depth="2" color="#BCBBBB"></a-box>
-      <a-box static-body position="0 2.5 15" width="30" height="5" depth="2" color="#BCBBBB"></a-box>
-      <a-box static-body position="15 2.5 0" width="2" height="5" depth="30" color="#BCBBBB"></a-box>
-      <a-box static-body position="-15 2.5 0" width="2" height="5" depth="30" color="#BCBBBB"></a-box>
+      <a-box static-body position="0 2.5 -15" width="30" height="5" depth="1" color="#BCBBBB"></a-box>
+      <a-box static-body position="0 2.5 15" width="30" height="5" depth="1" color="#BCBBBB"></a-box>
+      <a-box static-body position="15 2.5 0" width="1" height="5" depth="31" color="#BCBBBB"></a-box>
+      <a-box static-body position="-15 2.5 0" width="1" height="5" depth="31" color="#BCBBBB"></a-box>
 
       <a-entity id="camera-rig" 
                 movement-controls="controls: keyboard; speed: 0.2" 
-                kinematic-body="radius: 0.6; height: 1.6" 
+                kinematic-body="radius: 0.5; height: 1.6" 
                 position="0 0.1 0">
         <a-camera id="local-player" look-controls="pointerLockEnabled: true">
           <a-cursor color="red"></a-cursor>
