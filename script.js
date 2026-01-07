@@ -2,10 +2,8 @@ const socket = io("http://localhost:3000");
 
 // --- SETUP SCENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0d); // Sfondo leggermente più scuro
-
-// NEBBIA AUMENTATA: Inizia a 2 unità e diventa muro nero a 35 unità
-scene.fog = new THREE.Fog(0x0a0a0d, 2, 35); 
+scene.background = new THREE.Color(0x101015);
+scene.fog = new THREE.Fog(0x101015, 10, 70); // Nebbia leggermente più profonda per la mappa più grande
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -15,22 +13,21 @@ document.body.appendChild(renderer.domElement);
 const clock = new THREE.Clock();
 
 // --- LUCI ---
-// Abbassata luce ambientale per enfatizzare la nebbia
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); 
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); 
 scene.add(ambientLight);
 
-const moonLight = new THREE.DirectionalLight(0xaabbff, 0.5);
+const moonLight = new THREE.DirectionalLight(0xaabbff, 0.8);
 moonLight.position.set(20, 40, 20);
 scene.add(moonLight);
 
 // --- MAPPA 100x100 ---
 const ARENA_SIZE = 100; 
 const objects = []; 
-const monolithMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.1 });
+const monolithMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 });
 
 function createMonolith(x, z) {
-    const height = 4 + Math.random() * 16; 
-    const width = 2 + Math.random() * 4;
+    const height = 4 + Math.random() * 14; 
+    const width = 2 + Math.random() * 3;
     const geo = new THREE.BoxGeometry(width, height, width);
     const mesh = new THREE.Mesh(geo, monolithMat);
     mesh.position.set(x, height / 2, z);
@@ -38,35 +35,39 @@ function createMonolith(x, z) {
     objects.push(mesh);
 }
 
+// Generiamo 60 monoliti nell'arena 100x100
 for (let i = 0; i < 60; i++) {
     let rx = (Math.random() - 0.5) * (ARENA_SIZE - 10);
     let rz = (Math.random() - 0.5) * (ARENA_SIZE - 10);
-    if (Math.abs(rx) > 7 || Math.abs(rz) > 7) createMonolith(rx, rz);
+    // Zona di spawn sicura al centro
+    if (Math.abs(rx) > 6 || Math.abs(rz) > 6) createMonolith(rx, rz);
 }
 
+// Pavimento 100x100
 const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE),
-    new THREE.MeshStandardMaterial({ color: 0x050505 })
+    new THREE.MeshStandardMaterial({ color: 0x151515 })
 );
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
+// Mura di confine (Arena 100x100)
 function createBoundary(x, z, w, d) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 20, d), new THREE.MeshStandardMaterial({ color: 0x020202 }));
-    wall.position.set(x, 10, z);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 15, d), new THREE.MeshStandardMaterial({ color: 0x080808 }));
+    wall.position.set(x, 7.5, z);
     scene.add(wall);
     objects.push(wall);
 }
 const half = ARENA_SIZE / 2;
-createBoundary(0, -half, ARENA_SIZE, 2);
-createBoundary(0, half, ARENA_SIZE, 2);
-createBoundary(-half, 0, 2, ARENA_SIZE);
-createBoundary(half, 0, 2, ARENA_SIZE);
+createBoundary(0, -half, ARENA_SIZE, 2); // Nord
+createBoundary(0, half, ARENA_SIZE, 2);  // Sud
+createBoundary(-half, 0, 2, ARENA_SIZE); // Ovest
+createBoundary(half, 0, 2, ARENA_SIZE);  // Est
 
 // --- BERSAGLI ---
 const targets = [];
 function createTarget(x, z) {
-    const target = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2 }));
+    const target = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1.5 }));
     target.position.set(x, 1, z);
     scene.add(target);
     targets.push(target);
@@ -77,9 +78,9 @@ for(let i=0; i<15; i++) createTarget((Math.random()-0.5)*(ARENA_SIZE-20), (Math.
 const particles = [];
 function createExplosion(pos) {
     for (let i = 0; i < 15; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
         p.position.copy(pos);
-        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), life: 1.0 };
+        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.6, Math.random()*0.6, (Math.random()-0.5)*0.6), life: 1.0 };
         scene.add(p);
         particles.push(p);
     }
@@ -91,7 +92,7 @@ player.position.set(0, 0.5, 0);
 scene.add(player);
 const otherPlayers = {};
 
-// --- SPADA ---
+// --- SPADA (SPRITE) ---
 const textureLoader = new THREE.TextureLoader();
 const swordTexture = textureLoader.load('sword.png');
 const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent: true });
@@ -193,7 +194,7 @@ function update(delta) {
 
 socket.on('player-moved', (d) => {
     if (!otherPlayers[d.id]) {
-        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x333333}));
+        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x555555}));
         scene.add(otherPlayers[d.id]);
     }
     otherPlayers[d.id].position.set(d.x, d.y + 0.5, d.z);
