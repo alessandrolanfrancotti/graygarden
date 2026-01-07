@@ -33,41 +33,42 @@ scene.add(player);
 const otherPlayers = {};
 
 // --- SPADA (Mano Destra) ---
-const swordGroup = new THREE.Group(); // Useremo un gruppo per la spada
-const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.8, 0.1),
-    new THREE.MeshStandardMaterial({ color: 0xcccccc }) // Lama grigia
-);
-blade.position.y = 0.4; // Posiziona la lama sopra l'impugnatura
+const swordGroup = new THREE.Group();
+const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+blade.position.y = 0.4;
 swordGroup.add(blade);
-
-const handle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.15, 0.2, 0.15),
-    new THREE.MeshStandardMaterial({ color: 0x8B4513 }) // Impugnatura marrone
-);
-handle.position.y = -0.1; // Posiziona l'impugnatura
+const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.15), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
+handle.position.y = -0.1;
 swordGroup.add(handle);
 
-// Posiziona la spada nella visuale della camera
-swordGroup.position.set(0.4, -0.3, -0.6); // Destra, in basso, leggermente in avanti
-swordGroup.rotation.z = Math.PI / 4; // Inclina leggermente la spada
-swordGroup.scale.set(0.5, 0.5, 0.5); // Rimpicciolisci la spada
-camera.add(swordGroup); // Aggiungi la spada direttamente alla camera
+swordGroup.position.set(0.4, -0.4, -0.6); // Posizione base
+swordGroup.rotation.z = Math.PI / 4;
+swordGroup.scale.set(0.5, 0.5, 0.5);
+camera.add(swordGroup);
+scene.add(camera); // Importante per vedere la spada attaccata alla camera
+
+// --- LOGICA ATTACCO (OSCILLAZIONE) ---
+let isAttacking = false;
+let attackTime = 0;
+
+document.addEventListener('mousedown', (e) => {
+    if (document.pointerLockElement === document.body && !isAttacking) {
+        isAttacking = true;
+        attackTime = 0;
+    } else {
+        document.body.requestPointerLock();
+    }
+});
 
 // --- CONTROLLI MOUSE (First Person) ---
-let pitch = 0; // Rotazione su/giù
-let yaw = 0;   // Rotazione destra/sinistra
-
-document.addEventListener('click', () => {
-    document.body.requestPointerLock();
-});
+let pitch = 0;
+let yaw = 0;
 
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
         const sensitivity = 0.002;
         yaw -= e.movementX * sensitivity;
         pitch -= e.movementY * sensitivity;
-        
         pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, pitch));
     }
 });
@@ -91,11 +92,12 @@ function checkCollision(newX, newZ) {
 }
 
 function update() {
+    // Rotazione Giocatore
     player.rotation.y = yaw;
 
+    // Movimento
     let moveX = 0;
     let moveZ = 0;
-
     if (keys['KeyW']) { moveX -= Math.sin(yaw); moveZ -= Math.cos(yaw); }
     if (keys['KeyS']) { moveX += Math.sin(yaw); moveZ += Math.cos(yaw); }
     if (keys['KeyA']) { moveX -= Math.cos(yaw); moveZ += Math.sin(yaw); }
@@ -110,15 +112,38 @@ function update() {
     if (!checkCollision(player.position.x + moveX, player.position.z)) player.position.x += moveX;
     if (!checkCollision(player.position.x, player.position.z + moveZ)) player.position.z += moveZ;
 
+    // Salto
     if (keys['Space'] && player.position.y <= 0.51) velY = 0.15;
     velY -= 0.008;
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
 
+    // Camera
     camera.position.copy(player.position);
     camera.position.y += 0.4;
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
+
+    // --- ANIMAZIONE SPADA ---
+    if (isAttacking) {
+        attackTime += 0.15; // Velocità dell'attacco
+        // Effetto oscillazione (avanti e rotazione)
+        swordGroup.position.z = -0.6 - Math.sin(attackTime) * 0.4;
+        swordGroup.rotation.x = -Math.sin(attackTime) * 1.2;
+        
+        if (attackTime >= Math.PI) { // Fine del ciclo di oscillazione
+            isAttacking = false;
+            attackTime = 0;
+            swordGroup.position.z = -0.6; // Ritorna in posizione base
+            swordGroup.rotation.x = 0;
+        }
+    } else {
+        // Oscillazione leggera quando si cammina (effetto "bobbing")
+        if (length > 0) {
+            const bob = Math.sin(Date.now() * 0.01) * 0.02;
+            swordGroup.position.y = -0.4 + bob;
+        }
+    }
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
 }
@@ -142,7 +167,6 @@ function animate() {
 }
 animate();
 
-// Gestione ridimensionamento finestra
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
