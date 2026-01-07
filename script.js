@@ -8,8 +8,20 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// --- OROLOGIO PER IL DELTA TIME ---
 const clock = new THREE.Clock();
+
+// --- CREAZIONE MIRINO (HUD) ---
+const crosshair = document.createElement('div');
+crosshair.style.position = 'absolute';
+crosshair.style.top = '50%';
+crosshair.style.left = '50%';
+crosshair.style.width = '10px';
+crosshair.style.height = '10px';
+crosshair.style.backgroundColor = 'white';
+crosshair.style.borderRadius = '50%';
+crosshair.style.transform = 'translate(-50%, -50%)';
+crosshair.style.border = '1px solid black';
+document.body.appendChild(crosshair);
 
 // --- LUCI ---
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -17,7 +29,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 0.8);
 sun.position.set(5, 10, 7);
 scene.add(sun);
 
-// --- MONDO (PARETI E BERSAGLI) ---
+// --- MONDO ---
 const walls = [];
 function createWall(x, z, w, d) {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 4, d), new THREE.MeshStandardMaterial({ color: 0x808080 }));
@@ -44,60 +56,27 @@ player.position.y = 0.5;
 scene.add(player);
 const otherPlayers = {};
 
-// --- CARICAMENTO TEXTURE SPADA ---
+// --- SPADA (SPRITE PNG) ---
 const textureLoader = new THREE.TextureLoader();
 const swordTexture = textureLoader.load('sword.png');
-
-// Creiamo uno Sprite invece di un cubo per la spada
-const swordMaterial = new THREE.SpriteMaterial({ 
-    map: swordTexture,
-    transparent: true // Importante se il PNG ha lo sfondo trasparente
-});
+const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent: true });
 const swordSprite = new THREE.Sprite(swordMaterial);
 
-// Posizionamento e dimensioni (regola questi valori se la spada sembra deformata)
-swordSprite.scale.set(1, 1, 1); 
-swordSprite.position.set(0.5, -0.4, -0.8); // Destra, basso, avanti
+// Posizionamento iniziale dello sprite
+swordSprite.scale.set(1.5, 1.5, 1); // Regola dimensioni se necessario
+swordSprite.position.set(0.6, -0.5, -1); 
 camera.add(swordSprite);
 scene.add(camera);
 
-// --- LOGICA ATTACCO (OSCILLAZIONE SPRITE) ---
+// --- LOGICA ATTACCO ---
 let isAttacking = false, attackTime = 0, hasHitInThisSwing = false;
+document.addEventListener('mousedown', () => {
+    if (document.pointerLockElement === document.body && !isAttacking) {
+        isAttacking = true; attackTime = 0; hasHitInThisSwing = false;
+    } else { document.body.requestPointerLock(); }
+});
 
-// ... (resto del codice uguale fino a update) ...
-
-function update(delta) {
-    // ... (movimento, collisioni, salto, ecc.) ...
-
-    // --- ANIMAZIONE SPADA (SPRITE) ---
-    if (isAttacking) {
-        attackTime += 10 * delta; 
-        
-        // Effetto fendente: muoviamo lo sprite in diagonale e lo facciamo ruotare
-        swordSprite.position.x = 0.5 - Math.sin(attackTime) * 0.4;
-        swordSprite.position.y = -0.4 + Math.sin(attackTime) * 0.2;
-        swordSprite.material.rotation = Math.sin(attackTime) * 0.5; // Ruota l'immagine
-
-        if (!hasHitInThisSwing && attackTime > 1.0) checkSwordHit();
-
-        if (attackTime >= Math.PI) {
-            isAttacking = false;
-            // Reset posizione base
-            swordSprite.position.set(0.5, -0.4, -0.8);
-            swordSprite.material.rotation = 0;
-        }
-    } else {
-        // Leggero movimento mentre cammini
-        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-        if (length > 0) {
-            swordSprite.position.y = -0.4 + Math.sin(Date.now() * 0.01) * 0.02;
-        }
-    }
-
-    // ... (multiplayer e render) ...
-}
-
-// --- CONTROLLI ---
+// --- CONTROLLI MOUSE ---
 let pitch = 0, yaw = 0;
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
@@ -118,12 +97,25 @@ function checkCollision(newX, newZ) {
     return false;
 }
 
-// --- UPDATE FISICA ---
+function checkSwordHit() {
+    const raycaster = new THREE.Raycaster();
+    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    raycaster.set(camera.position, direction);
+    const intersects = raycaster.intersectObjects(targets);
+    if (intersects.length > 0 && intersects[0].distance < 3) {
+        const hitObject = intersects[0].object;
+        scene.remove(hitObject);
+        targets.splice(targets.indexOf(hitObject), 1);
+        hasHitInThisSwing = true;
+    }
+}
+
+// --- UPDATE LOOP ---
 function update(delta) {
     player.rotation.y = yaw;
     let moveX = 0, moveZ = 0;
     
-    // Velocità base al secondo (moltiplicata per delta)
+    // VELOCITÀ IMPOSTATA A 10.0
     const baseSpeed = 10.0; 
     const currentSpeed = baseSpeed * delta;
 
@@ -141,8 +133,8 @@ function update(delta) {
     if (!checkCollision(player.position.x + moveX, player.position.z)) player.position.x += moveX;
     if (!checkCollision(player.position.x, player.position.z + moveZ)) player.position.z += moveZ;
 
-    // Salto e Gravità (anch'essi scalati con delta)
-    if (keys['Space'] && player.position.y <= 0.51) velY = 0.25;
+    // Salto e Gravità
+    if (keys['Space'] && player.position.y <= 0.51) velY = 0.22;
     velY -= 0.6 * delta; 
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
@@ -152,33 +144,29 @@ function update(delta) {
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
-    // Animazione Spada
+    // ANIMAZIONE SPADA PNG
     if (isAttacking) {
-        attackTime += 10 * delta; 
-        swordGroup.position.z = -0.6 - Math.sin(attackTime) * 0.5;
-        swordGroup.rotation.x = -Math.sin(attackTime) * 1.5;
-        if (!hasHitInThisSwing && attackTime > 1.0) checkSwordHit();
+        attackTime += 12 * delta; 
+        // Movimento fendente: avanti/indietro e rotazione
+        swordSprite.position.z = -1.0 - Math.sin(attackTime) * 0.5;
+        swordSprite.position.x = 0.6 - Math.sin(attackTime) * 0.6;
+        swordSprite.material.rotation = Math.sin(attackTime) * 0.8;
+
+        if (!hasHitInThisSwing && attackTime > 1.2) checkSwordHit();
+
         if (attackTime >= Math.PI) {
             isAttacking = false;
-            swordGroup.position.z = -0.6;
-            swordGroup.rotation.x = 0;
+            swordSprite.position.set(0.6, -0.5, -1);
+            swordSprite.material.rotation = 0;
+        }
+    } else {
+        // Effetto bobbing camminata
+        if (length > 0) {
+            swordSprite.position.y = -0.5 + Math.sin(Date.now() * 0.01) * 0.02;
         }
     }
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
-}
-
-function checkSwordHit() {
-    const raycaster = new THREE.Raycaster();
-    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    raycaster.set(camera.position, direction);
-    const intersects = raycaster.intersectObjects(targets);
-    if (intersects.length > 0 && intersects[0].distance < 2.5) {
-        const hitObject = intersects[0].object;
-        scene.remove(hitObject);
-        targets.splice(targets.indexOf(hitObject), 1);
-        hasHitInThisSwing = true;
-    }
 }
 
 // --- MULTIPLAYER ---
@@ -191,11 +179,19 @@ socket.on('player-moved', (data) => {
     otherPlayers[data.id].rotation.y = data.rotY || 0;
 });
 
+socket.on('player-disconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } });
+
 // --- RENDER LOOP ---
 function animate() {
     requestAnimationFrame(animate);
-    const delta = clock.getDelta(); // Ottieni il tempo passato dall'ultimo frame
+    const delta = clock.getDelta();
     update(delta);
     renderer.render(scene, camera);
 }
 animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
