@@ -2,10 +2,10 @@ const socket = io("http://localhost:3000");
 
 // --- SETUP SCENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020205); // Notte profonda
+scene.background = new THREE.Color(0x101015); // Grigio molto scuro, non nero
 
-// AGGIUNTA NEBBIA: (Colore, distanza inizio, distanza fine)
-scene.fog = new THREE.Fog(0x020205, 5, 45); 
+// NEBBIA MENO AGGRESSIVA: spostata più lontano (da 10 a 60 unità)
+scene.fog = new THREE.Fog(0x101015, 10, 60); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14,25 +14,28 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 
-// --- LUCI (LUMINOSITÀ AUMENTATA) ---
-const ambientLight = new THREE.AmbientLight(0x505060, 0.8); // Più luce generale
+// --- LUCI (POTENZIATE) ---
+// Luce ambientale molto più forte per vedere i volumi
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); 
 scene.add(ambientLight);
 
-const moonLight = new THREE.DirectionalLight(0x7788ff, 0.6); // Luce direzionale bluastra (Luna)
-moonLight.position.set(10, 20, 10);
+// Luce direzionale (Luna) che proietta luce bianca/azzurra
+const moonLight = new THREE.DirectionalLight(0xaabbff, 0.8);
+moonLight.position.set(15, 30, 15);
 scene.add(moonLight);
 
 // --- MONOLITI E MONDO ---
 const objects = []; 
+// Materiale più chiaro (grigio scuro invece di nero) per riflettere la luce
 const monolithMat = new THREE.MeshStandardMaterial({ 
-    color: 0x080808, 
-    roughness: 0.7, 
+    color: 0x222222, 
+    roughness: 0.8, 
     metalness: 0.2 
 });
 
 function createMonolith(x, z) {
-    const height = 4 + Math.random() * 10; 
-    const width = 1.5 + Math.random() * 2;
+    const height = 4 + Math.random() * 12; 
+    const width = 1.5 + Math.random() * 2.5;
     const geo = new THREE.BoxGeometry(width, height, width);
     const mesh = new THREE.Mesh(geo, monolithMat);
     mesh.position.set(x, height / 2, z);
@@ -40,17 +43,17 @@ function createMonolith(x, z) {
     objects.push(mesh);
 }
 
-// Generiamo 60 monoliti per una mappa più densa
+// Generiamo 60 monoliti
 for (let i = 0; i < 60; i++) {
-    let rx = (Math.random() - 0.5) * 100;
-    let rz = (Math.random() - 0.5) * 100;
-    if (Math.abs(rx) > 5 || Math.abs(rz) > 5) createMonolith(rx, rz);
+    let rx = (Math.random() - 0.5) * 120;
+    let rz = (Math.random() - 0.5) * 120;
+    if (Math.abs(rx) > 6 || Math.abs(rz) > 6) createMonolith(rx, rz);
 }
 
-// Pavimento scuro
+// Pavimento grigio scuro (più visibile)
 const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0x050505 })
+    new THREE.PlaneGeometry(300, 300),
+    new THREE.MeshStandardMaterial({ color: 0x151515 })
 );
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
@@ -59,23 +62,27 @@ scene.add(floor);
 const targets = [];
 function createTarget(x, z) {
     const target = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.8, 0.8), 
-        new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 })
+        new THREE.BoxGeometry(1, 1, 1), 
+        new THREE.MeshStandardMaterial({ 
+            color: 0xff0000, 
+            emissive: 0xff0000, 
+            emissiveIntensity: 1 
+        })
     );
     target.position.set(x, 0.8, z);
     scene.add(target);
     targets.push(target);
 }
-for(let i=0; i<8; i++) createTarget((Math.random()-0.5)*40, (Math.random()-0.5)*40);
+for(let i=0; i<12; i++) createTarget((Math.random()-0.5)*60, (Math.random()-0.5)*60);
 
 // --- PARTICELLE ---
 const particles = [];
 function createExplosion(pos) {
     for (let i = 0; i < 15; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
         p.position.copy(pos);
         p.userData = { 
-            vel: new THREE.Vector3((Math.random()-0.5)*0.4, Math.random()*0.4, (Math.random()-0.5)*0.4), 
+            vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), 
             life: 1.0 
         };
         scene.add(p);
@@ -96,8 +103,8 @@ const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent:
 const swordSprite = new THREE.Sprite(swordMaterial);
 
 swordSprite.material.rotation = Math.PI; 
-swordSprite.scale.set(0.5, 1.8, 1); // Spada ancora più stretta
-swordSprite.position.set(0.7, -0.6, -1); 
+swordSprite.scale.set(0.6, 2.0, 1); 
+swordSprite.position.set(0.7, -0.6, -1.2); 
 camera.add(swordSprite);
 scene.add(camera);
 
@@ -124,7 +131,7 @@ window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 function checkCollision(newX, newZ) {
-    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(1, 1, 1));
+    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(1.2, 1.2, 1.2));
     for (let obj of objects) { if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) return true; }
     return false;
 }
@@ -134,7 +141,7 @@ function checkSwordHit() {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     raycaster.set(camera.position, dir);
     const intersects = raycaster.intersectObjects(targets);
-    if (intersects.length > 0 && intersects[0].distance < 3.8) {
+    if (intersects.length > 0 && intersects[0].distance < 4) {
         const obj = intersects[0].object;
         createExplosion(obj.position);
         scene.remove(obj);
@@ -160,28 +167,28 @@ function update(delta) {
     if (!checkCollision(player.position.x + mX, player.position.z)) player.position.x += mX;
     if (!checkCollision(player.position.x, player.position.z + mZ)) player.position.z += mZ;
 
-    if (keys['Space'] && player.position.y <= 0.51) velY = 0.22;
-    velY -= 0.6 * delta; 
+    if (keys['Space'] && player.position.y <= 0.51) velY = 0.25;
+    velY -= 0.7 * delta; 
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
 
-    camera.position.copy(player.position).y += 0.5; // Leggermente più alto
+    camera.position.copy(player.position).y += 0.6;
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
-    // Gestione Particelle
+    // Particelle
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.position.add(p.userData.vel);
-        p.userData.life -= 0.025;
+        p.userData.life -= 0.03;
         p.scale.setScalar(p.userData.life);
         if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
     }
 
     // Animazione Spada
     if (isAttacking) {
-        attackTime += 14 * delta; // Attacco leggermente più veloce
-        swordSprite.position.z = -1.0 - Math.sin(attackTime) * 0.6;
+        attackTime += 14 * delta; 
+        swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
         swordSprite.material.rotation = Math.PI + Math.sin(attackTime) * 1.2;
         if (!hasHitInThisSwing && attackTime > 1.2) checkSwordHit();
         if (attackTime >= Math.PI) {
@@ -189,7 +196,7 @@ function update(delta) {
             swordSprite.material.rotation = Math.PI;
         }
     } else if (len > 0) {
-        swordSprite.position.y = -0.6 + Math.sin(Date.now() * 0.012) * 0.03;
+        swordSprite.position.y = -0.6 + Math.sin(Date.now() * 0.012) * 0.04;
     }
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
@@ -198,7 +205,7 @@ function update(delta) {
 // --- MULTIPLAYER ---
 socket.on('player-moved', (d) => {
     if (!otherPlayers[d.id]) {
-        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1,2,1), new THREE.MeshStandardMaterial({color: 0x222222}));
+        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x444444}));
         scene.add(otherPlayers[d.id]);
     }
     otherPlayers[d.id].position.set(d.x, d.y + 0.5, d.z);
