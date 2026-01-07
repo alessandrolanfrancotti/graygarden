@@ -3,7 +3,7 @@ const socket = io("http://localhost:3000");
 // --- SETUP SCENA ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x101015);
-scene.fog = new THREE.Fog(0x101015, 10, 50); 
+scene.fog = new THREE.Fog(0x101015, 10, 70); // Nebbia leggermente più profonda per la mappa più grande
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -17,17 +17,17 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
 const moonLight = new THREE.DirectionalLight(0xaabbff, 0.8);
-moonLight.position.set(15, 30, 15);
+moonLight.position.set(20, 40, 20);
 scene.add(moonLight);
 
-// --- MAPPA LIMITATA (ARENA) ---
-const ARENA_SIZE = 40; // Dimensione dell'area di gioco
+// --- MAPPA 100x100 ---
+const ARENA_SIZE = 100; 
 const objects = []; 
 const monolithMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 });
 
 function createMonolith(x, z) {
-    const height = 4 + Math.random() * 12; 
-    const width = 1.5 + Math.random() * 2.5;
+    const height = 4 + Math.random() * 14; 
+    const width = 2 + Math.random() * 3;
     const geo = new THREE.BoxGeometry(width, height, width);
     const mesh = new THREE.Mesh(geo, monolithMat);
     mesh.position.set(x, height / 2, z);
@@ -35,14 +35,15 @@ function createMonolith(x, z) {
     objects.push(mesh);
 }
 
-// Monoliti sparsi solo nell'arena
-for (let i = 0; i < 35; i++) {
-    let rx = (Math.random() - 0.5) * (ARENA_SIZE - 5);
-    let rz = (Math.random() - 0.5) * (ARENA_SIZE - 5);
-    if (Math.abs(rx) > 5 || Math.abs(rz) > 5) createMonolith(rx, rz);
+// Generiamo 60 monoliti nell'arena 100x100
+for (let i = 0; i < 60; i++) {
+    let rx = (Math.random() - 0.5) * (ARENA_SIZE - 10);
+    let rz = (Math.random() - 0.5) * (ARENA_SIZE - 10);
+    // Zona di spawn sicura al centro
+    if (Math.abs(rx) > 6 || Math.abs(rz) > 6) createMonolith(rx, rz);
 }
 
-// Pavimento ridotto
+// Pavimento 100x100
 const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE),
     new THREE.MeshStandardMaterial({ color: 0x151515 })
@@ -50,36 +51,36 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Mura di confine per non cadere/scappare
+// Mura di confine (Arena 100x100)
 function createBoundary(x, z, w, d) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 10, d), new THREE.MeshStandardMaterial({ color: 0x050505 }));
-    wall.position.set(x, 5, z);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 15, d), new THREE.MeshStandardMaterial({ color: 0x080808 }));
+    wall.position.set(x, 7.5, z);
     scene.add(wall);
     objects.push(wall);
 }
 const half = ARENA_SIZE / 2;
-createBoundary(0, -half, ARENA_SIZE, 1); // Nord
-createBoundary(0, half, ARENA_SIZE, 1);  // Sud
-createBoundary(-half, 0, 1, ARENA_SIZE); // Ovest
-createBoundary(half, 0, 1, ARENA_SIZE);  // Est
+createBoundary(0, -half, ARENA_SIZE, 2); // Nord
+createBoundary(0, half, ARENA_SIZE, 2);  // Sud
+createBoundary(-half, 0, 2, ARENA_SIZE); // Ovest
+createBoundary(half, 0, 2, ARENA_SIZE);  // Est
 
 // --- BERSAGLI ---
 const targets = [];
 function createTarget(x, z) {
-    const target = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 }));
-    target.position.set(x, 0.8, z);
+    const target = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1.5 }));
+    target.position.set(x, 1, z);
     scene.add(target);
     targets.push(target);
 }
-for(let i=0; i<8; i++) createTarget((Math.random()-0.5)*(ARENA_SIZE-10), (Math.random()-0.5)*(ARENA_SIZE-10));
+for(let i=0; i<15; i++) createTarget((Math.random()-0.5)*(ARENA_SIZE-20), (Math.random()-0.5)*(ARENA_SIZE-20));
 
 // --- PARTICELLE ---
 const particles = [];
 function createExplosion(pos) {
     for (let i = 0; i < 15; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
         p.position.copy(pos);
-        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), life: 1.0 };
+        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.6, Math.random()*0.6, (Math.random()-0.5)*0.6), life: 1.0 };
         scene.add(p);
         particles.push(p);
     }
@@ -97,8 +98,8 @@ const swordTexture = textureLoader.load('sword.png');
 const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent: true });
 const swordSprite = new THREE.Sprite(swordMaterial);
 swordSprite.material.rotation = Math.PI; 
-swordSprite.scale.set(0.6, 2.0, 1); 
-swordSprite.position.set(0.7, -0.6, -1.2); 
+swordSprite.scale.set(0.65, 2.1, 1); 
+swordSprite.position.set(0.75, -0.6, -1.2); 
 camera.add(swordSprite);
 scene.add(camera);
 
@@ -125,7 +126,7 @@ window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 function checkCollision(newX, newZ) {
-    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(1.2, 1.2, 1.2));
+    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(1.3, 1.3, 1.3));
     for (let obj of objects) { if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) return true; }
     return false;
 }
@@ -135,7 +136,7 @@ function checkSwordHit() {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     raycaster.set(camera.position, dir);
     const intersects = raycaster.intersectObjects(targets);
-    if (intersects.length > 0 && intersects[0].distance < 4) {
+    if (intersects.length > 0 && intersects[0].distance < 4.5) {
         const obj = intersects[0].object;
         createExplosion(obj.position);
         scene.remove(obj);
@@ -193,7 +194,7 @@ function update(delta) {
 
 socket.on('player-moved', (d) => {
     if (!otherPlayers[d.id]) {
-        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x444444}));
+        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({color: 0x555555}));
         scene.add(otherPlayers[d.id]);
     }
     otherPlayers[d.id].position.set(d.x, d.y + 0.5, d.z);
