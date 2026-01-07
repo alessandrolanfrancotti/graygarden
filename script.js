@@ -4,10 +4,12 @@ const localCamera = document.getElementById('local-player');
 const scene = document.querySelector('a-scene');
 const otherPlayers = {};
 
-// Blocco Mouse
-scene.addEventListener('click', () => { scene.canvas.requestPointerLock(); });
+// Forza l'aggiornamento della fisica all'avvio
+scene.addEventListener('loaded', () => {
+    console.log("Sistema fisico pronto.");
+});
 
-// Salto Semplificato
+// LOGICA MOVIMENTO/SALTO
 let isJumping = false;
 let vVel = 0;
 
@@ -18,9 +20,8 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Loop 50fps
 setInterval(() => {
-    // Gravità
+    // Solo l'asse Y viene gestito manualmente per il salto
     if (isJumping || rig.object3D.position.y > 0.1) {
         vVel -= 0.01;
         rig.object3D.position.y += vVel;
@@ -31,22 +32,23 @@ setInterval(() => {
         }
     }
 
-    // Invio dati
+    // Invio al server (prendiamo le coordinate X e Z calcolate dal motore fisico)
     if (socket.connected) {
         const p = rig.object3D.position;
-        socket.emit('move', { x: p.x, y: p.y, z: p.z, ry: localCamera.getAttribute('rotation').y });
+        const r = localCamera.getAttribute('rotation');
+        socket.emit('move', { x: p.x, y: p.y, z: p.z, ry: r.y });
     }
 }, 20);
 
-// Altri giocatori
+// Avatar altri giocatori
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
-        const box = document.createElement('a-box');
-        box.setAttribute('color', 'orange');
-        box.setAttribute('width', '0.5');
-        box.setAttribute('height', '1.5');
-        scene.appendChild(box);
-        otherPlayers[data.id] = box;
+        const b = document.createElement('a-box');
+        b.setAttribute('color', 'orange');
+        b.setAttribute('width', '0.5');
+        b.setAttribute('height', '1.5');
+        scene.appendChild(b);
+        otherPlayers[data.id] = b;
     }
     otherPlayers[data.id].object3D.position.set(data.x, data.y, data.z);
 });
