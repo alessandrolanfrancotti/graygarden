@@ -1,19 +1,11 @@
 const socket = io("https://graygarden.onrender.com");
 const rig = document.getElementById('camera-rig');
 
-// CONTROLLO AUTOMATICO FISICA
-window.onload = () => {
-    setTimeout(() => {
-        if (rig.components['kinematic-body']) {
-            console.log("✅ FISICA ATTIVA: I muri dovrebbero funzionare.");
-        } else {
-            console.error("❌ FISICA FALLITA: Il componente kinematic-body non è caricato!");
-            alert("Errore: La fisica non è partita. Ricarica la pagina con CTRL+F5.");
-        }
-    }, 1000);
-};
+// Lock mouse
+document.querySelector('a-scene').addEventListener('click', () => {
+    document.querySelector('a-scene').canvas.requestPointerLock();
+});
 
-// LOGICA MOVIMENTO/SALTO
 let isJumping = false;
 let vVel = 0;
 
@@ -37,6 +29,7 @@ setInterval(() => {
     
     if (socket.connected) {
         const p = rig.object3D.position;
-        socket.emit('move', { x: p.x, y: p.y, z: p.z, ry: document.getElementById('local-player').getAttribute('rotation').y });
+        const r = document.getElementById('local-player').getAttribute('rotation');
+        socket.emit('move', { x: p.x, y: p.y, z: p.z, ry: r.y });
     }
 }, 20);
