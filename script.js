@@ -2,8 +2,10 @@ const socket = io("http://localhost:3000");
 
 // --- SETUP SCENA ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050505); // Cielo notturno quasi nero
-scene.fog = new THREE.Fog(0x050505, 1, 30); // Nebbia oscura per profondità
+scene.background = new THREE.Color(0x020205); // Notte profonda
+
+// AGGIUNTA NEBBIA: (Colore, distanza inizio, distanza fine)
+scene.fog = new THREE.Fog(0x020205, 5, 45); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -12,19 +14,25 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 
-// --- LUCI DARK ---
-scene.add(new THREE.AmbientLight(0x404040, 0.5)); // Luce ambientale soffusa
-const moonLight = new THREE.PointLight(0x4444ff, 1, 50); // Luce lunare bluastra
-moonLight.position.set(0, 20, 0);
+// --- LUCI (LUMINOSITÀ AUMENTATA) ---
+const ambientLight = new THREE.AmbientLight(0x505060, 0.8); // Più luce generale
+scene.add(ambientLight);
+
+const moonLight = new THREE.DirectionalLight(0x7788ff, 0.6); // Luce direzionale bluastra (Luna)
+moonLight.position.set(10, 20, 10);
 scene.add(moonLight);
 
 // --- MONOLITI E MONDO ---
-const objects = []; // Array per collisioni (monoliti)
-const monolithMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+const objects = []; 
+const monolithMat = new THREE.MeshStandardMaterial({ 
+    color: 0x080808, 
+    roughness: 0.7, 
+    metalness: 0.2 
+});
 
 function createMonolith(x, z) {
-    const height = 3 + Math.random() * 7; // Altezze diverse
-    const width = 1 + Math.random() * 2;
+    const height = 4 + Math.random() * 10; 
+    const width = 1.5 + Math.random() * 2;
     const geo = new THREE.BoxGeometry(width, height, width);
     const mesh = new THREE.Mesh(geo, monolithMat);
     mesh.position.set(x, height / 2, z);
@@ -32,64 +40,68 @@ function createMonolith(x, z) {
     objects.push(mesh);
 }
 
-// Generiamo una selva di monoliti
-for (let i = 0; i < 40; i++) {
-    let rx = (Math.random() - 0.5) * 60;
-    let rz = (Math.random() - 0.5) * 60;
-    // Evitiamo che appaiano sopra il giocatore all'inizio
-    if (Math.abs(rx) > 3 || Math.abs(rz) > 3) createMonolith(rx, rz);
+// Generiamo 60 monoliti per una mappa più densa
+for (let i = 0; i < 60; i++) {
+    let rx = (Math.random() - 0.5) * 100;
+    let rz = (Math.random() - 0.5) * 100;
+    if (Math.abs(rx) > 5 || Math.abs(rz) > 5) createMonolith(rx, rz);
 }
 
-// Pavimento Dark
+// Pavimento scuro
 const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0x0a0a0a })
+    new THREE.MeshStandardMaterial({ color: 0x050505 })
 );
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// --- BERSAGLI (Ancora presenti come "anime" rosse) ---
+// --- BERSAGLI (Anime Rosse) ---
 const targets = [];
 function createTarget(x, z) {
-    const target = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 }));
-    target.position.set(x, 0.4, z);
+    const target = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8), 
+        new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 })
+    );
+    target.position.set(x, 0.8, z);
     scene.add(target);
     targets.push(target);
 }
-for(let i=0; i<5; i++) createTarget((Math.random()-0.5)*20, (Math.random()-0.5)*20);
+for(let i=0; i<8; i++) createTarget((Math.random()-0.5)*40, (Math.random()-0.5)*40);
 
 // --- PARTICELLE ---
 const particles = [];
 function createExplosion(pos) {
     for (let i = 0; i < 15; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
         p.position.copy(pos);
-        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.3, Math.random()*0.3, (Math.random()-0.5)*0.3), life: 1.0 };
+        p.userData = { 
+            vel: new THREE.Vector3((Math.random()-0.5)*0.4, Math.random()*0.4, (Math.random()-0.5)*0.4), 
+            life: 1.0 
+        };
         scene.add(p);
         particles.push(p);
     }
 }
 
 // --- GIOCATORE ---
-const player = new THREE.Object3D(); // Solo un contenitore invisibile
+const player = new THREE.Object3D(); 
 player.position.set(0, 0.5, 0);
 scene.add(player);
 const otherPlayers = {};
 
-// --- SPADA (SPRITE) ---
+// --- SPADA (SPRITE STRETTO) ---
 const textureLoader = new THREE.TextureLoader();
 const swordTexture = textureLoader.load('sword.png');
 const swordMaterial = new THREE.SpriteMaterial({ map: swordTexture, transparent: true });
 const swordSprite = new THREE.Sprite(swordMaterial);
 
 swordSprite.material.rotation = Math.PI; 
-// STRINGIAMO IL PNG: asse X più piccolo (0.6 invece di 1.5)
-swordSprite.scale.set(0.6, 1.8, 1); 
-swordSprite.position.set(0.6, -0.5, -0.8); 
+swordSprite.scale.set(0.5, 1.8, 1); // Spada ancora più stretta
+swordSprite.position.set(0.7, -0.6, -1); 
 camera.add(swordSprite);
 scene.add(camera);
 
-// --- INPUT E LOGICA ---
+// --- INPUT ---
 let isAttacking = false, attackTime = 0, hasHitInThisSwing = false;
 let pitch = 0, yaw = 0;
 const keys = {};
@@ -112,7 +124,7 @@ window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 function checkCollision(newX, newZ) {
-    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(0.8, 0.8, 0.8));
+    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(newX, player.position.y, newZ), new THREE.Vector3(1, 1, 1));
     for (let obj of objects) { if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) return true; }
     return false;
 }
@@ -122,7 +134,7 @@ function checkSwordHit() {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     raycaster.set(camera.position, dir);
     const intersects = raycaster.intersectObjects(targets);
-    if (intersects.length > 0 && intersects[0].distance < 3.5) {
+    if (intersects.length > 0 && intersects[0].distance < 3.8) {
         const obj = intersects[0].object;
         createExplosion(obj.position);
         scene.remove(obj);
@@ -153,40 +165,43 @@ function update(delta) {
     player.position.y += velY;
     if (player.position.y < 0.5) { player.position.y = 0.5; velY = 0; }
 
-    camera.position.copy(player.position).y += 0.4;
+    camera.position.copy(player.position).y += 0.5; // Leggermente più alto
     camera.rotation.order = "YXZ";
     camera.rotation.set(pitch, yaw, 0);
 
-    // Particelle
+    // Gestione Particelle
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.position.add(p.userData.vel);
-        p.userData.life -= 0.02;
+        p.userData.life -= 0.025;
         p.scale.setScalar(p.userData.life);
         if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
     }
 
-    // Animazione Spada (più stretta e lunga)
+    // Animazione Spada
     if (isAttacking) {
-        attackTime += 12 * delta;
-        swordSprite.position.z = -0.8 - Math.sin(attackTime) * 0.5;
-        swordSprite.material.rotation = Math.PI + Math.sin(attackTime) * 0.8;
+        attackTime += 14 * delta; // Attacco leggermente più veloce
+        swordSprite.position.z = -1.0 - Math.sin(attackTime) * 0.6;
+        swordSprite.material.rotation = Math.PI + Math.sin(attackTime) * 1.2;
         if (!hasHitInThisSwing && attackTime > 1.2) checkSwordHit();
         if (attackTime >= Math.PI) {
             isAttacking = false;
             swordSprite.material.rotation = Math.PI;
         }
+    } else if (len > 0) {
+        swordSprite.position.y = -0.6 + Math.sin(Date.now() * 0.012) * 0.03;
     }
 
     if (socket.connected) socket.emit('move', { x: player.position.x, y: player.position.y, z: player.position.z, rotY: yaw });
 }
 
+// --- MULTIPLAYER ---
 socket.on('player-moved', (d) => {
     if (!otherPlayers[d.id]) {
-        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: 0x333333}));
+        otherPlayers[d.id] = new THREE.Mesh(new THREE.BoxGeometry(1,2,1), new THREE.MeshStandardMaterial({color: 0x222222}));
         scene.add(otherPlayers[d.id]);
     }
-    otherPlayers[d.id].position.set(d.x, d.y, d.z);
+    otherPlayers[d.id].position.set(d.x, d.y + 0.5, d.z);
     otherPlayers[d.id].rotation.y = d.rotY || 0;
 });
 
