@@ -44,27 +44,58 @@ player.position.y = 0.5;
 scene.add(player);
 const otherPlayers = {};
 
-// --- SPADA ---
-const swordGroup = new THREE.Group();
-const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
-blade.position.y = 0.4;
-swordGroup.add(blade);
-const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.15), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
-handle.position.y = -0.1;
-swordGroup.add(handle);
-swordGroup.position.set(0.4, -0.4, -0.6);
-swordGroup.rotation.z = Math.PI / 4;
-swordGroup.scale.set(0.5, 0.5, 0.5);
-camera.add(swordGroup);
+// --- CARICAMENTO TEXTURE SPADA ---
+const textureLoader = new THREE.TextureLoader();
+const swordTexture = textureLoader.load('sword.png');
+
+// Creiamo uno Sprite invece di un cubo per la spada
+const swordMaterial = new THREE.SpriteMaterial({ 
+    map: swordTexture,
+    transparent: true // Importante se il PNG ha lo sfondo trasparente
+});
+const swordSprite = new THREE.Sprite(swordMaterial);
+
+// Posizionamento e dimensioni (regola questi valori se la spada sembra deformata)
+swordSprite.scale.set(1, 1, 1); 
+swordSprite.position.set(0.5, -0.4, -0.8); // Destra, basso, avanti
+camera.add(swordSprite);
 scene.add(camera);
 
-// --- LOGICA ATTACCO ---
+// --- LOGICA ATTACCO (OSCILLAZIONE SPRITE) ---
 let isAttacking = false, attackTime = 0, hasHitInThisSwing = false;
-document.addEventListener('mousedown', () => {
-    if (document.pointerLockElement === document.body && !isAttacking) {
-        isAttacking = true; attackTime = 0; hasHitInThisSwing = false;
-    } else { document.body.requestPointerLock(); }
-});
+
+// ... (resto del codice uguale fino a update) ...
+
+function update(delta) {
+    // ... (movimento, collisioni, salto, ecc.) ...
+
+    // --- ANIMAZIONE SPADA (SPRITE) ---
+    if (isAttacking) {
+        attackTime += 10 * delta; 
+        
+        // Effetto fendente: muoviamo lo sprite in diagonale e lo facciamo ruotare
+        swordSprite.position.x = 0.5 - Math.sin(attackTime) * 0.4;
+        swordSprite.position.y = -0.4 + Math.sin(attackTime) * 0.2;
+        swordSprite.material.rotation = Math.sin(attackTime) * 0.5; // Ruota l'immagine
+
+        if (!hasHitInThisSwing && attackTime > 1.0) checkSwordHit();
+
+        if (attackTime >= Math.PI) {
+            isAttacking = false;
+            // Reset posizione base
+            swordSprite.position.set(0.5, -0.4, -0.8);
+            swordSprite.material.rotation = 0;
+        }
+    } else {
+        // Leggero movimento mentre cammini
+        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+        if (length > 0) {
+            swordSprite.position.y = -0.4 + Math.sin(Date.now() * 0.01) * 0.02;
+        }
+    }
+
+    // ... (multiplayer e render) ...
+}
 
 // --- CONTROLLI ---
 let pitch = 0, yaw = 0;
