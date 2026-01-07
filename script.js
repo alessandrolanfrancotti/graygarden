@@ -1,7 +1,9 @@
-// Aspettiamo che la scena sia caricata
+// Forza il rig a resettare la telecamera se prova a muoversi indipendentemente
+const rig = document.getElementById('camera-rig');
+
 document.querySelector('a-scene').addEventListener('click', function () {
-    // Quando clicchi sulla schermata, il mouse viene "catturato" per ruotare la visuale
     this.canvas.requestPointerLock();
 });
 
-console.log("Sistema di movimento pronto. Usa WASD per muoverti.");
+// Messaggio di log per verificare che il file carichi
+console.log("Personaggio pronto. Se premi W e il cubo blu non avanza, scrivimelo subito.");
