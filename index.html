@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GrayGarden - Solid Body Fix</title>
+    <title>GrayGarden - Sblocco Movimento</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
-    <a-scene physics="debug: true; gravity: -9.8">
+    <a-scene physics="debug: true; gravity: -9.8; contactEquationStiffness: 1000">
       
       <a-sky color="#87CEEB"></a-sky>
 
@@ -19,26 +19,24 @@
       <a-box static-body position="15 2.5 0" width="2" height="5" depth="30" color="#333"></a-box>
       <a-box static-body position="-15 2.5 0" width="2" height="5" depth="30" color="#333"></a-box>
 
-<a-entity id="camera-rig" 
-          movement-controls="controls: keyboard; speed: 0.15" 
-          kinematic-body="radius: 0.4" 
-          position="0 0.2 0">
-  
-  <a-box id="player-body"
-         width="0.5" height="1.5" depth="0.5"
-         position="0 0.75 0"
-         color="blue"
-         opacity="0.7">
-  </a-box>
+      <a-entity id="camera-rig" 
+                movement-controls="controls: keyboard; speed: 0.2" 
+                kinematic-body="radius: 0.3" 
+                position="0 0.5 0">
+        
+        <a-box id="player-body"
+               width="0.4" height="1.5" depth="0.4"
+               position="0 0.75 0"
+               color="blue"
+               opacity="0.7">
+        </a-box>
 
-  <a-camera id="local-player" position="0 1.6 0" look-controls="pointerLockEnabled: true">
-    <a-cursor color="red"></a-cursor>
-  </a-camera>
-</a-entity>
+        <a-camera id="local-player" position="0 1.6 0" look-controls="pointerLockEnabled: true">
+          <a-cursor color="red"></a-cursor>
+        </a-camera>
+      </a-entity>
 
     </a-scene>
     <script src="script.js"></script>
   </body>
 </html>
-
-
