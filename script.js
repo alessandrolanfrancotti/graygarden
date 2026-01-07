@@ -93,7 +93,7 @@ function update(delta) {
     let moveX = 0, moveZ = 0;
     
     // Velocità base al secondo (moltiplicata per delta)
-    const baseSpeed = 7.0; 
+    const baseSpeed = 10.0; 
     const currentSpeed = baseSpeed * delta;
 
     if (keys['KeyW']) { moveX -= Math.sin(yaw); moveZ -= Math.cos(yaw); }
