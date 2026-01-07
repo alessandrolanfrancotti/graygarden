@@ -10,17 +10,18 @@ scene.addEventListener('click', () => { scene.canvas.requestPointerLock(); });
 let isJumping = false;
 let vVel = 0;
 
+// Eseguiamo il controllo collisioni 50 volte al secondo
 setInterval(() => {
-    // 1. COLLISIONI MATEMATICHE (I muri sono a +15 e -15)
-    // Se la posizione X o Z supera il limite, la resettiamo al limite
     let pos = rig.object3D.position;
 
-    if (pos.x > 14.5) pos.x = 14.5;   // Muro Est
-    if (pos.x < -14.5) pos.x = -14.5; // Muro Ovest
-    if (pos.z > 14.5) pos.z = 14.5;   // Muro Sud
-    if (pos.z < -14.5) pos.z = -14.5; // Muro Nord
+    // --- LOGICA MURI (Coordinate fisse) ---
+    // Il quadrato è tra -15 e +15. Usiamo 14.7 per fermarci un istante prima.
+    if (pos.x > 14.7) pos.x = 14.7;
+    if (pos.x < -14.7) pos.x = -14.7;
+    if (pos.z > 14.7) pos.z = 14.7;
+    if (pos.z < -14.7) pos.z = -14.7;
 
-    // 2. GESTIONE SALTO
+    // --- LOGICA SALTO ---
     if (isJumping || pos.y > 0.1) {
         vVel -= 0.01;
         pos.y += vVel;
@@ -31,7 +32,7 @@ setInterval(() => {
         }
     }
 
-    // 3. INVIO DATI MULTIPLAYER
+    // --- MULTIPLAYER ---
     if (socket.connected) {
         socket.emit('move', { 
             x: pos.x, y: pos.y, z: pos.z, 
@@ -40,7 +41,7 @@ setInterval(() => {
     }
 }, 20);
 
-// Salto con Spazio
+// Ascolto tasto spazio
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !isJumping && rig.object3D.position.y <= 0.2) {
         isJumping = true;
@@ -48,7 +49,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Ricezione altri giocatori
+// Altri giocatori
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
         const avatar = document.createElement('a-box');
