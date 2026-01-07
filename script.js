@@ -1,9 +1,18 @@
-// Forza il rig a resettare la telecamera se prova a muoversi indipendentemente
-const rig = document.getElementById('camera-rig');
+const rig = document.getElementById('rig');
+const body = document.getElementById('p-body');
 
-document.querySelector('a-scene').addEventListener('click', function () {
-    this.canvas.requestPointerLock();
-});
+function update() {
+    // Incolla forzatamente la posizione del cubo a quella della camera
+    body.object3D.position.x = rig.object3D.position.x;
+    body.object3D.position.z = rig.object3D.position.z;
+    body.object3D.position.y = rig.object3D.position.y - 0.75;
+    
+    // Collisione manuale (Muri a 15 metri)
+    if (rig.object3D.position.x > 14.5) rig.object3D.position.x = 14.5;
+    if (rig.object3D.position.x < -14.5) rig.object3D.position.x = -14.5;
+    if (rig.object3D.position.z > 14.5) rig.object3D.position.z = 14.5;
+    if (rig.object3D.position.z < -14.5) rig.object3D.position.z = -14.5;
 
-// Messaggio di log per verificare che il file carichi
-console.log("Personaggio pronto. Se premi W e il cubo blu non avanza, scrivimelo subito.");
+    requestAnimationFrame(update);
+}
+update();
