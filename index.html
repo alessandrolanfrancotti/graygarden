@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GrayGarden - Matematica Solida</title>
+    <meta charset="utf-8">
+    <title>GrayGarden - Controllo Manuale</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -12,10 +13,10 @@
 
       <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
 
-      <a-box class="muro" position="0 2.5 -15" width="30" height="5" depth="1" color="#333"></a-box>
-      <a-box class="muro" position="0 2.5 15" width="30" height="5" depth="1" color="#333"></a-box>
-      <a-box class="muro" position="15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
-      <a-box class="muro" position="-15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
+      <a-box position="0 2.5 -15" width="30" height="5" depth="1" color="#333"></a-box>
+      <a-box position="0 2.5 15" width="30" height="5" depth="1" color="#333"></a-box>
+      <a-box position="15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
+      <a-box position="-15 2.5 0" width="1" height="5" depth="31" color="#333"></a-box>
 
       <a-entity id="camera-rig" 
                 movement-controls="controls: keyboard; speed: 0.2" 
