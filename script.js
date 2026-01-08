@@ -16,21 +16,20 @@ document.body.appendChild(renderer.domElement);
 const clock = new THREE.Clock();
 const textureLoader = new THREE.TextureLoader();
 
-// --- MULTIPLAYER DATA ---
-const otherPlayers = {}; 
-
 // --- ASSETS ---
 const playerTexture = textureLoader.load('personaggio.png');
 const swordTexture = textureLoader.load('sword.png');
 
-// --- STELLE ---
+// --- MULTIPLAYER DATA ---
+const otherPlayers = {}; 
+
+// --- STELLE E LUCI ---
 const starGeo = new THREE.BufferGeometry();
 const starCoords = [];
 for (let i = 0; i < 1000; i++) starCoords.push((Math.random()-0.5)*400, Math.random()*200+50, (Math.random()-0.5)*400);
 starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
 scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.7 })));
 
-// --- LUCI ---
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 const moonLight = new THREE.DirectionalLight(0xaabbff, 0.9);
 moonLight.position.set(20, 50, 20);
@@ -48,8 +47,10 @@ function createWall(x, z, w, d) {
     objects.push(wall);
 }
 const half = ARENA_SIZE / 2;
-createWall(0, -half, ARENA_SIZE, 2); createWall(0, half, ARENA_SIZE, 2);  
-createWall(-half, 0, 2, ARENA_SIZE); createWall(half, 0, 2, ARENA_SIZE);  
+createWall(0, -half, ARENA_SIZE, 2); // Nord
+createWall(0, half, ARENA_SIZE, 2);  // Sud
+createWall(-half, 0, 2, ARENA_SIZE); // Ovest
+createWall(half, 0, 2, ARENA_SIZE);  // Est
 
 for (let i = 0; i < 60; i++) {
     let rx = (Math.random()-0.5)*90, rz = (Math.random()-0.5)*90;
@@ -61,7 +62,6 @@ for (let i = 0; i < 60; i++) {
         objects.push(m);
     }
 }
-
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE), new THREE.MeshStandardMaterial({ color: 0x050505 }));
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
@@ -71,48 +71,41 @@ const playerContainer = new THREE.Object3D();
 playerContainer.position.set(0, 0, 0);
 scene.add(playerContainer);
 
-// --- SPADA ---
+// --- SPADA (Prima Persona) ---
 const swordSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: swordTexture }));
 swordSprite.scale.set(1.0, 2.5, 1);
 swordSprite.position.set(0.75, -0.6, -1.2);
 camera.add(swordSprite);
 scene.add(camera);
 
-// --- LOGICA NPC ---
-let npcState = "following";
-let scaredTimer = 0;
-const npcMat = new THREE.SpriteMaterial({ map: playerTexture, color: 0x8888ff });
+// --- LOGICA NPC (SCAPPA SEMPRE) ---
+const npcMat = new THREE.SpriteMaterial({ map: playerTexture, color: 0xff8888 });
 const npc = new THREE.Sprite(npcMat);
 npc.scale.set(2, 2, 1);
 npc.position.set(15, 1, 15);
 scene.add(npc);
 
 const chatBubble = document.createElement('div');
-chatBubble.style.cssText = "position:absolute; background:white; padding:5px 10px; border-radius:10px; font-family:Arial; font-weight:bold; pointer-events:none; border: 2px solid black; display:none;";
+chatBubble.style.cssText = "position:absolute; background:white; padding:5px 10px; border-radius:10px; font-family:Arial; font-weight:bold; pointer-events:none; border: 2px solid black; color: red; display: none;";
+chatBubble.innerText = "NO CAP, STOP IT! 💀";
 document.body.appendChild(chatBubble);
 
 function updateNPC(delta, playerPos) {
-    const dist = npc.position.distanceTo(playerPos);
+    // Calcolo direzione di fuga
+    const runDir = new THREE.Vector3().subVectors(npc.position, playerPos).normalize();
     
-    if (npcState === "scared") {
-        scaredTimer -= delta;
-        chatBubble.innerText = "NO CAP, STOP IT! 💀";
-        chatBubble.style.color = "red";
-        const runDir = new THREE.Vector3().subVectors(npc.position, playerPos).normalize();
-        npc.position.addScaledVector(runDir, 8 * delta);
-        if (scaredTimer <= 0) {
-            npcState = "following";
-            npcMat.color.set(0x8888ff);
-        }
-    } else {
-        chatBubble.innerText = "Questo posto è cursed fr fr.";
-        chatBubble.style.color = "black";
-        if (dist > 4) {
-            const followDir = new THREE.Vector3().subVectors(playerPos, npc.position).normalize();
-            npc.position.addScaledVector(followDir, 5 * delta);
-        }
-    }
+    // Nuova posizione potenziale
+    let nextX = npc.position.x + runDir.x * 9 * delta;
+    let nextZ = npc.position.z + runDir.z * 9 * delta;
 
+    // Confini Arena (evita che attraversi i muri)
+    const margin = (ARENA_SIZE / 2) - 3;
+    nextX = Math.max(-margin, Math.min(margin, nextX));
+    nextZ = Math.max(-margin, Math.min(margin, nextZ));
+
+    npc.position.set(nextX, 1, nextZ); // Forza Y=1 (a terra)
+
+    // Fumetto
     const screenPos = npc.position.clone().setY(npc.position.y + 1.2).project(camera);
     if (screenPos.z < 1) {
         chatBubble.style.display = 'block';
@@ -125,16 +118,7 @@ function updateNPC(delta, playerPos) {
     }
 }
 
-function checkHitNPC() {
-    const dist = npc.position.distanceTo(playerContainer.position);
-    if (dist < 4) { 
-        npcState = "scared";
-        scaredTimer = 3.0;
-        npcMat.color.set(0xff8888);
-    }
-}
-
-// --- MULTIPLAYER ---
+// --- LOGICA MULTIPLAYER ---
 socket.on('player-moved', (data) => {
     if (!otherPlayers[data.id]) {
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: playerTexture, transparent: true }));
@@ -149,7 +133,7 @@ socket.on('player-disconnected', (id) => {
     if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; }
 });
 
-// --- INPUTS ---
+// --- INPUT E MOVIMENTO ---
 let yaw = 0, pitch = 0, velY = 0, isGrounded = true;
 let isAttacking = false, attackTime = 0;
 const keys = {};
@@ -171,7 +155,6 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
-// --- CORE LOOPS ---
 function update(delta) {
     let mX = 0, mZ = 0;
     const speed = 12 * delta;
@@ -196,17 +179,14 @@ function update(delta) {
     camera.position.copy(playerContainer.position).y += 1.6;
     camera.rotation.set(pitch, yaw, 0);
 
-    // AGGIORNAMENTO NPC
+    // Update NPC
     updateNPC(delta, playerContainer.position);
 
+    // Animazione Spada
     if (isAttacking) {
         attackTime += 14 * delta;
         swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
         swordSprite.material.rotation = Math.sin(attackTime) * 0.8;
-        
-        // CONTROLLA SE COLPISCI L'NPC
-        if (attackTime > 1.2 && attackTime < 1.5) checkHitNPC();
-
         if (attackTime >= Math.PI) { isAttacking = false; swordSprite.material.rotation = 0; }
     }
 
