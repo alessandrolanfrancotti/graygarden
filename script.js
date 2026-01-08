@@ -16,8 +16,9 @@ document.body.appendChild(renderer.domElement);
 const clock = new THREE.Clock();
 const textureLoader = new THREE.TextureLoader();
 
-// --- VARIABILI VISUALE ---
+// --- VARIABILI VISUALE E MULTIPLAYER ---
 let isThirdPerson = false;
+const otherPlayers = {}; // <--- AGGIUNTO: Dizionario per gli altri player
 
 // --- ASSETS ---
 const playerTexture = textureLoader.load('personaggio.png');
@@ -47,12 +48,11 @@ function createWall(x, z, w, d) {
     scene.add(wall);
     objects.push(wall);
 }
-// Confini dell'arena
 const half = ARENA_SIZE / 2;
-createWall(0, -half, ARENA_SIZE, 2); // Nord
-createWall(0, half, ARENA_SIZE, 2);  // Sud
-createWall(-half, 0, 2, ARENA_SIZE); // Ovest
-createWall(half, 0, 2, ARENA_SIZE);  // Est
+createWall(0, -half, ARENA_SIZE, 2); 
+createWall(0, half, ARENA_SIZE, 2);  
+createWall(-half, 0, 2, ARENA_SIZE); 
+createWall(half, 0, 2, ARENA_SIZE);  
 
 for (let i = 0; i < 60; i++) {
     let rx = (Math.random()-0.5)*90, rz = (Math.random()-0.5)*90;
@@ -68,14 +68,14 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE), ne
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// --- PLAYER LOCALE (VISIBILE SOLO IN 3A PERSONA) ---
+// --- PLAYER LOCALE ---
 const playerContainer = new THREE.Object3D();
 scene.add(playerContainer);
 
 const localPlayerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: playerTexture, transparent: true }));
 localPlayerSprite.scale.set(2, 2, 1);
 localPlayerSprite.position.y = 1;
-localPlayerSprite.visible = false; // Nascosto in prima persona
+localPlayerSprite.visible = false; 
 playerContainer.add(localPlayerSprite);
 
 // --- SPADA ---
@@ -84,6 +84,27 @@ swordSprite.scale.set(1.0, 2.5, 1);
 swordSprite.position.set(0.75, -0.6, -1.2);
 camera.add(swordSprite);
 scene.add(camera);
+
+// --- LOGICA MULTIPLAYER (RICEZIONE) ---
+socket.on('player-moved', (data) => {
+    if (!otherPlayers[data.id]) {
+        // Crea il modello per l'altro giocatore se non esiste
+        const spriteMat = new THREE.SpriteMaterial({ map: playerTexture, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(2, 2, 1);
+        scene.add(sprite);
+        otherPlayers[data.id] = sprite;
+    }
+    // Aggiorna posizione
+    otherPlayers[data.id].position.set(data.x, data.y + 1, data.z);
+});
+
+socket.on('player-disconnected', (id) => {
+    if (otherPlayers[id]) {
+        scene.remove(otherPlayers[id]);
+        delete otherPlayers[id];
+    }
+});
 
 // --- INPUT E LOGICA ---
 let yaw = 0, pitch = 0, velY = 0, isGrounded = true;
@@ -95,7 +116,8 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyV') {
         isThirdPerson = !isThirdPerson;
         localPlayerSprite.visible = isThirdPerson;
-        swordSprite.visible = !isThirdPerson;
+        // In terza persona mostriamo sia player che spada
+        swordSprite.visible = true; 
     }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
@@ -115,7 +137,6 @@ document.addEventListener('mousemove', (e) => {
 });
 
 function update(delta) {
-    // Movimento
     let mX = 0, mZ = 0;
     const speed = 12 * delta;
     if (keys['KeyW']) { mX -= Math.sin(yaw); mZ -= Math.cos(yaw); }
@@ -145,17 +166,28 @@ function update(delta) {
             playerContainer.position.z + Math.cos(yaw) * dist
         );
         camera.lookAt(playerContainer.position.x, playerContainer.position.y + 1, playerContainer.position.z);
+        swordSprite.position.set(1.2, -0.8, -1.5); // Spostiamo la spada un po' per la 3a persona
     } else {
         camera.position.copy(playerContainer.position).y += 1.6;
         camera.rotation.set(pitch, yaw, 0);
+        swordSprite.position.set(0.75, -0.6, -1.2);
     }
 
     // Animazione Spada
     if (isAttacking) {
         attackTime += 14 * delta;
-        swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
+        swordSprite.position.z -= Math.sin(attackTime) * 0.5;
         swordSprite.material.rotation = Math.sin(attackTime) * 0.8;
         if (attackTime >= Math.PI) { isAttacking = false; swordSprite.material.rotation = 0; }
+    }
+
+    // --- AGGIUNTO: INVIO POSIZIONE AL SERVER ---
+    if (socket.connected) {
+        socket.emit('move', {
+            x: playerContainer.position.x,
+            y: playerContainer.position.y,
+            z: playerContainer.position.z
+        });
     }
 }
 
