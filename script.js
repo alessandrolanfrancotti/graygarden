@@ -117,4 +117,54 @@ document.addEventListener('mousedown', () => {
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
         yaw -= e.movementX * 0.002;
-        pitch -= e.movementY * 0.00
+        pitch -= e.movementY * 0.002;
+        pitch = Math.max(-1.4, Math.min(1.4, pitch));
+    }
+});
+
+function update(delta) {
+    let mX = 0, mZ = 0;
+    const speed = 12 * delta;
+    if (keys['KeyW']) { mX -= Math.sin(yaw); mZ -= Math.cos(yaw); }
+    if (keys['KeyS']) { mX += Math.sin(yaw); mZ += Math.cos(yaw); }
+    if (keys['KeyA']) { mX -= Math.cos(yaw); mZ += Math.sin(yaw); }
+    if (keys['KeyD']) { mX += Math.cos(yaw); mZ -= Math.sin(yaw); }
+
+    // Salto e Gravità
+    if (keys['Space'] && isGrounded) { velY = 0.25; isGrounded = false; }
+    velY -= 0.6 * delta;
+    playerContainer.position.y += velY;
+    if (playerContainer.position.y <= 0) { playerContainer.position.y = 0; velY = 0; isGrounded = true; }
+
+    const nextX = playerContainer.position.x + mX * speed;
+    const nextZ = playerContainer.position.z + mZ * speed;
+
+    // Collisioni con i pilastri e muri
+    const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(nextX, 1, nextZ), new THREE.Vector3(1.2, 2, 1.2));
+    let collision = false;
+    for (let obj of objects) { if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) { collision = true; break; } }
+    if (!collision) { playerContainer.position.x = nextX; playerContainer.position.z = nextZ; }
+
+    camera.position.copy(playerContainer.position).y += 1.6;
+    camera.rotation.set(pitch, yaw, 0);
+
+    // Animazione Spada
+    if (isAttacking) {
+        attackTime += 14 * delta;
+        swordSprite.position.z = -1.2 - Math.sin(attackTime) * 0.7;
+        swordSprite.material.rotation = Math.sin(attackTime) * 0.8;
+        if (attackTime >= Math.PI) { isAttacking = false; swordSprite.material.rotation = 0; }
+    }
+
+    // Invio posizione al server
+    if (socket.connected) {
+        socket.emit('move', { x: playerContainer.position.x, y: playerContainer.position.y, z: playerContainer.position.z });
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    update(clock.getDelta());
+    renderer.render(scene, camera);
+}
+animate();
