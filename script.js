@@ -122,6 +122,54 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
+// --- LOGICA NPC ---
+const npcTexture = textureLoader.load('personaggio.png');
+const npcMat = new THREE.SpriteMaterial({ map: npcTexture, color: 0x8888ff }); // Leggermente bluastro per distinguerlo
+const npc = new THREE.Sprite(npcMat);
+npc.scale.set(2, 2, 1);
+npc.position.set(10, 1, 10); // Parte in una posizione diversa
+scene.add(npc);
+
+// Creazione del fumetto (HTML)
+const chatBubble = document.createElement('div');
+chatBubble.style.position = 'absolute';
+chatBubble.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+chatBubble.style.padding = '5px 10px';
+chatBubble.style.borderRadius = '10px';
+chatBubble.style.fontFamily = 'Arial, sans-serif';
+chatBubble.style.fontSize = '14px';
+chatBubble.style.fontWeight = 'bold';
+chatBubble.innerText = "Questo posto è cursed fr fr.";
+document.body.appendChild(chatBubble);
+
+function updateNPC(delta, playerPos) {
+    const dist = npc.position.distanceTo(playerPos);
+    
+    // Se è lontano più di 4 metri, ti segue
+    if (dist > 4) {
+        const direction = new THREE.Vector3().subVectors(playerPos, npc.position).normalize();
+        npc.position.x += direction.x * 5 * delta; // Velocità NPC
+        npc.position.z += direction.z * 5 * delta;
+    }
+
+    // Posizionamento fumetto sopra la testa dell'NPC
+    const tempVec = new THREE.Vector3(npc.position.x, npc.position.y + 1.5, npc.position.z);
+    tempVec.project(camera); // Proietta la posizione 3D sullo schermo 2D
+
+    if (tempVec.z < 1) { // Mostra solo se è davanti alla camera
+        const x = (tempVec.x * .5 + .5) * window.innerWidth;
+        const y = (tempVec.y * -.5 + .5) * window.innerHeight;
+        chatBubble.style.display = 'block';
+        chatBubble.style.left = `${x}px`;
+        chatBubble.style.top = `${y}px`;
+    } else {
+        chatBubble.style.display = 'none';
+    }
+}
+
+// --- MODIFICA LA TUA FUNZIONE ANIMATE/UPDATE ---
+// Assicurati di chiamare updateNPC(delta, playerContainer.position) dentro il tuo update(delta)
+
 function update(delta) {
     let mX = 0, mZ = 0;
     const speed = 12 * delta;
