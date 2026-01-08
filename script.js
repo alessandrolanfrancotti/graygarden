@@ -167,6 +167,73 @@ function updateNPC(delta, playerPos) {
     }
 }
 
+// --- LOGICA NPC AVANZATA ---
+let npcState = "following"; // può essere "following" o "scared"
+let scaredTimer = 0;
+
+const npcTexture = textureLoader.load('personaggio.png');
+const npcMat = new THREE.SpriteMaterial({ map: npcTexture, color: 0x8888ff });
+const npc = new THREE.Sprite(npcMat);
+npc.scale.set(2, 2, 1);
+npc.position.set(15, 1, 15);
+scene.add(npc);
+
+// Fumetto NPC
+const chatBubble = document.createElement('div');
+chatBubble.className = 'chat-bubble';
+chatBubble.style.cssText = "position:absolute; background:white; padding:5px 10px; border-radius:10px; font-family:Arial; font-weight:bold; pointer-events:none; border: 2px solid black;";
+document.body.appendChild(chatBubble);
+
+function updateNPC(delta, playerPos) {
+    const dist = npc.position.distanceTo(playerPos);
+    
+    // Gestione stati
+    if (npcState === "scared") {
+        scaredTimer -= delta;
+        chatBubble.innerText = "NO CAP, STOP IT! 💀";
+        chatBubble.style.color = "red";
+        
+        // Scappa nella direzione opposta al player
+        const runDir = new THREE.Vector3().subVectors(npc.position, playerPos).normalize();
+        npc.position.addScaledVector(runDir, 8 * delta); // Corre più veloce di quando segue
+
+        if (scaredTimer <= 0) {
+            npcState = "following";
+            npcMat.color.set(0x8888ff);
+        }
+    } else {
+        chatBubble.innerText = "Questo posto è cursed fr fr.";
+        chatBubble.style.color = "black";
+        
+        if (dist > 4) {
+            const followDir = new THREE.Vector3().subVectors(playerPos, npc.position).normalize();
+            npc.position.addScaledVector(followDir, 5 * delta);
+        }
+    }
+
+    // Posizionamento fumetto 2D sopra testa 3D
+    const screenPos = npc.position.clone().setY(npc.position.y + 1.2).project(camera);
+    if (screenPos.z < 1) {
+        chatBubble.style.display = 'block';
+        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
+        chatBubble.style.left = `${x}px`;
+        chatBubble.style.top = `${y}px`;
+    } else {
+        chatBubble.style.display = 'none';
+    }
+}
+
+// Funzione da chiamare quando attacchi
+function checkHitNPC() {
+    const dist = npc.position.distanceTo(playerContainer.position);
+    if (dist < 5) { // Se sei abbastanza vicino quando tiri il fendente
+        npcState = "scared";
+        scaredTimer = 3.0; // Scappa per 3 secondi
+        npcMat.color.set(0xff8888); // Diventa rosso per lo spavento
+    }
+}
+
 // --- MODIFICA LA TUA FUNZIONE ANIMATE/UPDATE ---
 // Assicurati di chiamare updateNPC(delta, playerContainer.position) dentro il tuo update(delta)
 
