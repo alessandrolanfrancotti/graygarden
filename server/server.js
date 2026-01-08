@@ -1,42 +1,49 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*" }
+    cors: {
+        origin: "*", // Permette connessioni da qualsiasi origine
+    }
 });
 
-// Messaggio di test per Render
-app.get('/', (req, res) => {
-    res.send('Server 3D GrayGarden Online! 🚀');
-});
+// Serve i file statici (il tuo index.html, personaggio.png, ecc.)
+app.use(express.static(__dirname));
 
-let players = {};
+// Gestione dei giocatori connessi
+const players = {};
 
 io.on('connection', (socket) => {
-    console.log('Giocatore connesso:', socket.id);
+    console.log(`Giocatore connesso: ${socket.id}`);
 
-    // Invia i giocatori esistenti al nuovo arrivato
-    socket.emit('current-players', players);
-
-    // Gestisce il movimento
+    // Quando un giocatore si muove
     socket.on('move', (data) => {
+        // Aggiorniamo i dati nel server (opzionale, ma utile)
         players[socket.id] = data;
-        // Invia la posizione agli altri (broadcast)
-        socket.broadcast.emit('player-moved', { id: socket.id, ...data });
+
+        // Invia i dati a TUTTI gli altri giocatori connessi
+        socket.broadcast.emit('player-moved', {
+            id: socket.id,
+            x: data.x,
+            y: data.y,
+            z: data.z
+        });
     });
 
-    // Gestisce la disconnessione
+    // Quando un giocatore si disconnette
     socket.on('disconnect', () => {
-        console.log('Giocatore disconnesso:', socket.id);
+        console.log(`Giocatore disconnesso: ${socket.id}`);
         delete players[socket.id];
+        // Avvisa gli altri di rimuovere il personaggio
         io.emit('player-disconnected', socket.id);
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Server in ascolto sulla porta ${PORT}`);
+    console.log(`Server in esecuzione su http://localhost:${PORT}`);
 });
